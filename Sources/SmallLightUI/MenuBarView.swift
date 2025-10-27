@@ -40,4 +40,6 @@ private final class PreviewOrchestrator: ActionOrchestrating {
     }
 
     func undoLastAction(for item: FinderItem) throws {}
+
+    func acknowledgeConfirmation(for item: FinderItem) {}
 }

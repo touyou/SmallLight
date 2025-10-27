@@ -28,12 +28,14 @@ struct SmallLightApp: App {
         let compression = StubCompressionService()
         let logger = NoopAuditLogger()
         let undoManager = StubUndoStagingManager()
+        let confirmationTracker = UserDefaultsConfirmationTracker()
         let orchestrator = DefaultActionOrchestrator(
             finderService: finder,
             hotKeyState: hotKeyState,
             compressionService: compression,
             auditLogger: logger,
-            undoManager: undoManager
+            undoManager: undoManager,
+            confirmationTracker: confirmationTracker
         )
         return AppViewModel(orchestrator: orchestrator)
     }

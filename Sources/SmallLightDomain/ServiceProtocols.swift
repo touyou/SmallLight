@@ -8,6 +8,15 @@ public protocol HotKeyStateProviding {
     var isModifierChordActive: Bool { get }
 }
 
+public protocol HotKeyStateMutating: HotKeyStateProviding {
+    func setModifierChordActive(_ isActive: Bool)
+}
+
+public protocol HotKeyManaging {
+    func register(chord: HotKeyChord) throws
+    func unregister()
+}
+
 public protocol CompressionService {
     func compress(item: FinderItem, destinationDirectory: URL) throws -> URL
     func decompress(item: FinderItem, destinationDirectory: URL) throws -> URL
@@ -23,8 +32,15 @@ public protocol UndoStagingManaging {
     func restore(from stagingURL: URL, to destinationURL: URL) throws
 }
 
+public protocol ConfirmationTracking {
+    func needsConfirmation(for url: URL) -> Bool
+    func markConfirmed(for url: URL)
+    func resetConfirmation(for url: URL)
+}
+
 public protocol ActionOrchestrating {
     func evaluatePendingAction() throws -> ActionDecision?
     func perform(decision: ActionDecision) throws -> URL
     func undoLastAction(for item: FinderItem) throws
+    func acknowledgeConfirmation(for item: FinderItem)
 }

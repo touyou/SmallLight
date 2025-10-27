@@ -17,19 +17,22 @@ final class CompressionFlowAcceptanceTests: XCTestCase {
         let compression = RecordingCompressionService(expectedDestination: archiveURL)
         let auditLogger = RecordingAuditLogger()
         let undoManager = RecordingUndoManager(stagingRoot: tempDirectory.appendingPathComponent("staging"))
+        let confirmationTracker = RecordingConfirmationTracker()
 
         let orchestrator = DefaultActionOrchestrator(
             finderService: finder,
             hotKeyState: hotKeyState,
             compressionService: compression,
             auditLogger: auditLogger,
-            undoManager: undoManager
+            undoManager: undoManager,
+            confirmationTracker: confirmationTracker
         )
 
         let decision = try XCTUnwrap(orchestrator.evaluatePendingAction())
         XCTAssertTrue(decision.requiresConfirmation)
         XCTAssertEqual(decision.intendedAction, .compress)
 
+        orchestrator.acknowledgeConfirmation(for: decision.item)
         let destination = try orchestrator.perform(decision: decision)
         XCTAssertEqual(destination, archiveURL)
 
@@ -42,6 +45,7 @@ final class CompressionFlowAcceptanceTests: XCTestCase {
         XCTAssertEqual(compression.capturedRequests.first?.source, decision.item)
         XCTAssertEqual(compression.capturedRequests.first?.destinationDirectory, decision.item.url.deletingLastPathComponent())
         XCTAssertEqual(undoManager.stageRequests.count, 1)
+        XCTAssertEqual(confirmationTracker.markedURLs, [decision.item.url])
     }
 }
 
@@ -102,5 +106,23 @@ private final class RecordingUndoManager: UndoStagingManaging {
 
     func restore(from stagingURL: URL, to destinationURL: URL) throws {
         // no-op for acceptance stub
+    }
+}
+
+private final class RecordingConfirmationTracker: ConfirmationTracking {
+    private(set) var markedURLs: [URL] = []
+
+    func needsConfirmation(for url: URL) -> Bool {
+        !markedURLs.contains(url)
+    }
+
+    func markConfirmed(for url: URL) {
+        if !markedURLs.contains(url) {
+            markedURLs.append(url)
+        }
+    }
+
+    func resetConfirmation(for url: URL) {
+        markedURLs.removeAll { $0 == url }
     }
 }
