@@ -11,6 +11,10 @@ final class AppCoordinator: ObservableObject {
         case watching
     }
 
+    private enum DedupAction {
+        static let resolve = "resolve"
+    }
+
     @Published private(set) var mode: Mode = .idle
     @Published private(set) var hudVisible: Bool = false
 
@@ -24,6 +28,10 @@ final class AppCoordinator: ObservableObject {
     private let hoverMonitorFactory: (AppSettings.Trigger, @escaping HoverMonitor.Handler) -> HoverMonitor
     private let hudWindowFactory: @MainActor (HUDViewModel, @escaping (HUDEntry) -> Void) -> HUDWindowController
     private let dedupStore: DeduplicationStore
+    private let resolver: FinderItemResolving
+    private let zipHandler: ZipHandler
+    private let hotKeyCenter: HotKeyCenter
+    private var didWarnAccessibility = false
 
     private lazy var hoverMonitor: HoverMonitor = hoverMonitorFactory(settings.trigger) { [weak self] event in
         self?.handleHoverEvent(event)
@@ -32,6 +40,7 @@ final class AppCoordinator: ObservableObject {
         self?.copyToClipboard(entry)
     }
     private let hudViewModel: HUDViewModel
+    private let resolutionQueue = DispatchQueue(label: "io.smalllight.finder-resolution", qos: .userInitiated)
 
     init(
         settings: AppSettings = AppSettings(),
@@ -41,7 +50,10 @@ final class AppCoordinator: ObservableObject {
         hoverMonitorFactory: @escaping (AppSettings.Trigger, @escaping HoverMonitor.Handler) -> HoverMonitor = HoverMonitor.init,
         hudWindowFactory: @MainActor @escaping (HUDViewModel, @escaping (HUDEntry) -> Void) -> HUDWindowController = { viewModel, copyHandler in
             HUDWindowController(viewModel: viewModel, copyHandler: copyHandler)
-        }
+        },
+        resolver: FinderItemResolving = FinderItemResolver(),
+        zipHandler: ZipHandler = ZipHandler(),
+        hotKeyCenter: HotKeyCenter = HotKeyCenter()
     ) {
         self.settings = settings
         self.overlayManager = overlayManager
@@ -50,6 +62,9 @@ final class AppCoordinator: ObservableObject {
         self.hudWindowFactory = hudWindowFactory
         self.hudViewModel = HUDViewModel(historyLimit: settings.hud.historyLimit, autoCopyEnabled: settings.hud.autoCopyEnabled)
         self.dedupStore = dedupStore ?? DeduplicationStore(ttl: settings.dedup.ttl, capacity: settings.dedup.capacity)
+        self.resolver = resolver
+        self.zipHandler = zipHandler
+        self.hotKeyCenter = hotKeyCenter
     }
 
     func start() {
@@ -58,11 +73,13 @@ final class AppCoordinator: ObservableObject {
         hudWindowController.show()
         hudVisible = true
         mode = .watching
+        registerHotKeys()
     }
 
     func stop() {
         guard mode == .watching else { return }
         hoverMonitor.stop()
+        hotKeyCenter.unregisterAll()
         mode = .idle
     }
 
@@ -89,14 +106,9 @@ final class AppCoordinator: ObservableObject {
         }
     }
 
-    func clearDedupKey(for path: String, action: String) {
-        let key = dedupKey(for: path, action: action)
-        dedupStore.remove(key)
-    }
-
     private func handleHoverEvent(_ event: HoverMonitor.Event) {
         overlayManager.updateCursorPosition(event.location)
-        // Finder resolution pipeline will be connected in Phase 3.
+        resolve(at: event.location, bypassDedup: false)
     }
 
     private func copyToClipboard(_ entry: HUDEntry) {
@@ -104,7 +116,109 @@ final class AppCoordinator: ObservableObject {
         pasteboard.setString(entry.path, forType: .string)
     }
 
-    private func dedupKey(for path: String, action: String) -> String {
-        "\(path)::\(action)"
+    @MainActor
+    private func handleResolvedItem(_ resolution: FinderItemResolution, dedupKey: String) {
+        if resolution.isArchive, settings.zip.behaviour == .auto {
+            handleZipExtraction(for: resolution, dedupKey: dedupKey)
+        } else {
+            present(path: resolution.path)
+        }
+    }
+
+    @MainActor
+    private func handleAccessibilityWarning() {
+        guard !didWarnAccessibility else { return }
+        didWarnAccessibility = true
+        NSLog("[FinderOverlayDebugger] Accessibility permission required to resolve Finder items.")
+    }
+
+    @MainActor
+    private func handleResolverError(_ error: Error) {
+        NSLog("[FinderOverlayDebugger] Failed to resolve Finder item: \(error)")
+    }
+
+    func clearDedupKey(for path: String, action: String) {
+        let key = "\(path)::\(action)"
+        dedupStore.remove(key)
+    }
+
+    private func handleZipExtraction(for resolution: FinderItemResolution, dedupKey: String) {
+        let zipHandler = self.zipHandler
+        let dedupStore = self.dedupStore
+        resolutionQueue.async { [weak self] in
+            do {
+                let destination = try zipHandler.extract(zipPath: resolution.path)
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    let message = UILocalized.formatted("hud.zip.success", resolution.path)
+                    self.present(path: destination.path, message: message)
+                }
+            } catch {
+                dedupStore.remove(dedupKey)
+                NSLog("[FinderOverlayDebugger] Zip extraction failed: \(error)")
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    let message = UILocalized.formatted("hud.zip.error", error.localizedDescription)
+                    self.present(path: resolution.path, message: message)
+                }
+            }
+        }
+    }
+
+    private func registerHotKeys() {
+        do {
+            try hotKeyCenter.register([
+                (settings.focusHotKey, { [weak self] in
+                    Task { @MainActor in
+                        self?.focusHUD()
+                    }
+                }),
+                (settings.manualResolveHotKey, { [weak self] in
+                    Task { @MainActor in
+                        self?.handleManualResolve()
+                    }
+                }),
+                (settings.toggleHUDHotKey, { [weak self] in
+                    Task { @MainActor in
+                        self?.toggleHUDVisibility()
+                    }
+                })
+            ])
+        } catch {
+            NSLog("[FinderOverlayDebugger] Failed to register hot keys: \(error)")
+        }
+    }
+
+    private func handleManualResolve() {
+        let location = NSEvent.mouseLocation
+        overlayManager.updateCursorPosition(location)
+        resolve(at: location, bypassDedup: true)
+    }
+
+    private func resolve(at location: CGPoint, bypassDedup: Bool) {
+        let resolver = self.resolver
+        let dedupStore = self.dedupStore
+
+        resolutionQueue.async { [weak self] in
+            do {
+                guard let resolution = try resolver.resolveItem(at: location) else { return }
+                let key = "\(resolution.path)::\(DedupAction.resolve)"
+                if !bypassDedup && dedupStore.isDuplicate(key) {
+                    return
+                }
+                dedupStore.record(key)
+                Task { @MainActor [weak self] in
+                    self?.handleResolvedItem(resolution, dedupKey: key)
+                }
+            } catch FinderItemResolverError.accessibilityPermissionRequired {
+                Task { @MainActor [weak self] in
+                    self?.handleAccessibilityWarning()
+                }
+            } catch {
+                Task { @MainActor [weak self] in
+                    self?.handleResolverError(error)
+                }
+            }
+        }
     }
 }

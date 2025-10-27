@@ -25,3 +25,5 @@
 "menu.show.hud" = "Show HUD";
 "menu.focus.hud" = "Focus HUD";
 "menu.quit" = "Quit FinderOverlayDebugger";
+"hud.zip.success" = "Unpacked archive: %@";
+"hud.zip.error" = "Failed to unpack: %@";

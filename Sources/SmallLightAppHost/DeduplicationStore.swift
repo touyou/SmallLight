@@ -60,3 +60,5 @@ final class DeduplicationStore {
         }
     }
 }
+
+extension DeduplicationStore: @unchecked Sendable {}
