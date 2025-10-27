@@ -1,5 +1,9 @@
 import Foundation
 
+protocol ZipHandling: Sendable {
+    func extract(zipPath: String) throws -> URL
+}
+
 enum ZipHandlerError: LocalizedError {
     case notAZip
     case dittoFailed(code: Int32, message: String)
@@ -94,4 +98,5 @@ final class ZipHandler {
     }
 }
 
+extension ZipHandler: ZipHandling {}
 extension ZipHandler: @unchecked Sendable {}

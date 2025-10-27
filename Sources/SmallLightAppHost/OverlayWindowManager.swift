@@ -1,5 +1,10 @@
 import AppKit
 
+@MainActor
+protocol OverlayUpdating {
+    func updateCursorPosition(_ point: CGPoint)
+}
+
 /// Draws circular cursor indicators on transparent windows across all displays.
 @MainActor
 final class OverlayWindowManager {
@@ -66,3 +71,5 @@ final class OverlayWindowManager {
         }
     }
 }
+
+extension OverlayWindowManager: OverlayUpdating {}

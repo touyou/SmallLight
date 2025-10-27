@@ -49,10 +49,10 @@ Delivery follows outside-in, test-guided iterations. Each phase concludes with r
 ## Phase 5 – ZIP Automation & Notifications
 1. **ZipHandler**
    - Execute `/usr/bin/ditto` for `.zip` paths, applying suffix if conflicts exist.
-   - Post results to HUD; on error, remove dedup key.
-   - Integration tests using temporary directories.
+   - Post results to HUD; on error, remove dedup key so retries fire immediately.
+   - Integration tests using temporary directories validating suffix, success messaging, and failure handling.
 2. **HUD/Notification Messaging**
-   - Localise completion/error messages (English/Japanese).
+   - Localise completion/error messages (English/Japanese) and include the extracted destination path in success copy.
    - Ensure global focus hotkey brings HUD forward.
 
 ## Phase 6 – Polishing, UX & Docs

@@ -6,13 +6,11 @@
 - When notifications are required, launch from the app bundle (not `swift run`) and approve the notification prompt.
 
 ## Daily Usage
-- Hold the configured modifier chord (default: ⌃⌥ L) and hover Finder items:
-  - Folders compress to `<name>.zip`.
-  - Zip archives decompress into sibling directories.
-- Use the menu bar's **Pause/Resume Monitoring** button to temporarily disable or re-enable SmallLight without quitting the app.
-- The cursor glow indicates SmallLight is listening. Menu bar status reflects readiness or errors.
-- Confirmation notifications appear on first use of a path. Accept them from Notification Center or the SmallLight menu.
-- After each action, the notification includes an **Undo** button; the same path is available in the menu UI.
+- Hold the configured modifier chord (default: Option) and hover Finder items to update the HUD with the resolved absolute path. The HUD keeps the latest five entries and offers a one-click copy plus `⌘C` shortcut when focused.
+- When the pointer rests on a `.zip`, FinderOverlayDebugger extracts it with `/usr/bin/ditto` into a sibling directory. Existing folders trigger an `_unpacked`, `_unpacked2`, … suffix so nothing is overwritten.
+- Extraction outcomes are mirrored in the HUD: success messages reference the destination folder, while failures include the ditto error so you can retry.
+- Use the menu bar control or `⌃⌥ Space` to focus the HUD, `⌘⌥ H` to toggle visibility, and `⌃⌥ P` for a manual resolve that bypasses deduplication (helpful when you need to re-run against the same path).
+- The hovered cursor indicator confirms the listener is active; pause or resume monitoring from the menu bar when you need to temporarily disable the overlay.
 
 ## Preferences
 Open **Preferences…** from the menu bar item to configure:
@@ -31,7 +29,7 @@ Open **Preferences…** from the menu bar item to configure:
 
 ## Troubleshooting
 - **Cursor never glows**: ensure hotkey permission and accessibility permission are set. Check that Finder is frontmost.
-- **Compression failed**: inspect `~/Library/Application Support/SmallLight/logs/actions.log` for entries with `compressionFailed` or `decompressionFailed` reasons.
+- **Zip extraction failed**: the HUD will show the ditto error; after a failure the dedup cache resets so a manual resolve (`⌃⌥ P`) immediately retries. Check `~/Library/Application Support/SmallLight/logs/actions.log` for persistent issues.
 - **Undo not available**: staged files expire after the configured retention period or when manually cleaned.
 - **Launch at login does nothing**: verify that the app was run from the `.app` bundle so the LaunchAgent path resolves correctly.
 

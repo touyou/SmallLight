@@ -49,10 +49,11 @@ FinderOverlayDebugger (開発コード: SmallLight) is a resident macOS 13+ util
 - Shows latest resolved path as monospaced text, includes Copy button and keyboard shortcut (`⌘C`).
 - Maintain history of the last five entries.
 - Configurable automatic copy-to-clipboard.
+- When additional context is available (e.g. zip extraction result), surface a secondary message line alongside the stored path.
 
 ### Global Hotkeys
 - `Ctrl+Option+Space`: bring app to front and focus HUD.
-- `Ctrl+Option+P`: manual resolve override (ignores dedup TTL).
+- `Ctrl+Option+P`: manual resolve override (ignores dedup TTL and re-runs Finder resolution at the current cursor position).
 - `Command+Option+H`: toggle HUD visibility.
 - Register via Carbon Event Hot Keys; display accessibility prompt if permissions missing.
 
@@ -63,7 +64,7 @@ FinderOverlayDebugger (開発コード: SmallLight) is a resident macOS 13+ util
 - Maintain in-memory ring buffer (size 256) keyed by `hash(path + action)`.
 - TTL per entry: 3000 ms. Dwell triggers for the same key within TTL are ignored.
 - Manual override hotkey bypasses dedup check (but still re-enqueues fresh TTL entry).
-- Remove dedup key on action error (e.g., unzip failure).
+- Remove dedup key on action error (e.g., unzip failure) so the user can retry immediately.
 
 ### ZIP Handler
 - When hovered path ends with `.zip`:
@@ -71,7 +72,7 @@ FinderOverlayDebugger (開発コード: SmallLight) is a resident macOS 13+ util
   - If conflicting folder exists, append `_unpacked`.
   - Execute `/usr/bin/ditto -x -k {zipPath} {destinationDir}`.
   - Behaviour modes: `auto` (default) vs `prompt` (future preferences).
-  - On success, append HUD history entry “解凍完了: {destinationPath}`.
+  - On success, append HUD history entry “解凍完了: {destinationPath}”.
   - On failure, HUD: “解凍に失敗しました: {error}”; dedup key removed to allow retry.
 
 ## Settings Defaults

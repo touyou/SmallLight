@@ -2,6 +2,14 @@ import AppKit
 import SwiftUI
 import SmallLightUI
 
+@MainActor
+protocol HUDWindowControlling: AnyObject {
+    var isVisible: Bool { get }
+    func show()
+    func hide()
+    func focus()
+}
+
 /// Manages the floating HUD window that displays resolved Finder paths.
 @MainActor
 final class HUDWindowController {
@@ -63,3 +71,5 @@ final class HUDWindowController {
         window.setFrameOrigin(origin)
     }
 }
+
+extension HUDWindowController: HUDWindowControlling {}

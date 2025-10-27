@@ -23,20 +23,20 @@ final class AppCoordinator: ObservableObject {
     var hudModel: HUDViewModel { hudViewModel }
 
     private let settings: AppSettings
-    private let overlayManager: OverlayWindowManager
+    private let overlayManager: OverlayUpdating
     private let pasteboard: NSPasteboard
     private let hoverMonitorFactory: (AppSettings.Trigger, @escaping HoverMonitor.Handler) -> HoverMonitor
-    private let hudWindowFactory: @MainActor (HUDViewModel, @escaping (HUDEntry) -> Void) -> HUDWindowController
+    private let hudWindowFactory: @MainActor (HUDViewModel, @escaping (HUDEntry) -> Void) -> HUDWindowControlling
     private let dedupStore: DeduplicationStore
     private let resolver: FinderItemResolving
-    private let zipHandler: ZipHandler
-    private let hotKeyCenter: HotKeyCenter
+    private let zipHandler: ZipHandling
+    private let hotKeyCenter: HotKeyRegistering
     private var didWarnAccessibility = false
 
     private lazy var hoverMonitor: HoverMonitor = hoverMonitorFactory(settings.trigger) { [weak self] event in
         self?.handleHoverEvent(event)
     }
-    private lazy var hudWindowController: HUDWindowController = hudWindowFactory(hudViewModel) { [weak self] entry in
+    private lazy var hudWindowController: HUDWindowControlling = hudWindowFactory(hudViewModel) { [weak self] entry in
         self?.copyToClipboard(entry)
     }
     private let hudViewModel: HUDViewModel
@@ -44,16 +44,16 @@ final class AppCoordinator: ObservableObject {
 
     init(
         settings: AppSettings = AppSettings(),
-        overlayManager: OverlayWindowManager = OverlayWindowManager(),
+        overlayManager: OverlayUpdating = OverlayWindowManager(),
         pasteboard: NSPasteboard = .general,
         dedupStore: DeduplicationStore? = nil,
         hoverMonitorFactory: @escaping (AppSettings.Trigger, @escaping HoverMonitor.Handler) -> HoverMonitor = HoverMonitor.init,
-        hudWindowFactory: @MainActor @escaping (HUDViewModel, @escaping (HUDEntry) -> Void) -> HUDWindowController = { viewModel, copyHandler in
+        hudWindowFactory: @MainActor @escaping (HUDViewModel, @escaping (HUDEntry) -> Void) -> HUDWindowControlling = { viewModel, copyHandler in
             HUDWindowController(viewModel: viewModel, copyHandler: copyHandler)
         },
         resolver: FinderItemResolving = FinderItemResolver(),
-        zipHandler: ZipHandler = ZipHandler(),
-        hotKeyCenter: HotKeyCenter = HotKeyCenter()
+        zipHandler: ZipHandling = ZipHandler(),
+        hotKeyCenter: HotKeyRegistering = HotKeyCenter()
     ) {
         self.settings = settings
         self.overlayManager = overlayManager
@@ -150,7 +150,7 @@ final class AppCoordinator: ObservableObject {
                 let destination = try zipHandler.extract(zipPath: resolution.path)
                 Task { @MainActor [weak self] in
                     guard let self else { return }
-                    let message = UILocalized.formatted("hud.zip.success", resolution.path)
+                    let message = UILocalized.formatted("hud.zip.success", destination.path)
                     self.present(path: destination.path, message: message)
                 }
             } catch {
@@ -175,7 +175,7 @@ final class AppCoordinator: ObservableObject {
                 }),
                 (settings.manualResolveHotKey, { [weak self] in
                     Task { @MainActor in
-                        self?.handleManualResolve()
+                        self?.manualResolve()
                     }
                 }),
                 (settings.toggleHUDHotKey, { [weak self] in
@@ -189,7 +189,7 @@ final class AppCoordinator: ObservableObject {
         }
     }
 
-    private func handleManualResolve() {
+    func manualResolve() {
         let location = NSEvent.mouseLocation
         overlayManager.updateCursorPosition(location)
         resolve(at: location, bypassDedup: true)

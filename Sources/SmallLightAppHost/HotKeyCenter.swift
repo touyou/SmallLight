@@ -2,6 +2,12 @@ import Foundation
 import SmallLightDomain
 import SmallLightServices
 
+@MainActor
+protocol HotKeyRegistering {
+    func register(_ entries: [(HotKeyChord, () -> Void)]) throws
+    func unregisterAll()
+}
+
 /// Manages global hotkey registrations and dispatches pressed events to callbacks.
 final class HotKeyCenter {
     private struct Registration {
@@ -38,3 +44,5 @@ final class HotKeyCenter {
         registrations.removeAll()
     }
 }
+
+extension HotKeyCenter: HotKeyRegistering {}
