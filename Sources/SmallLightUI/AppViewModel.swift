@@ -5,7 +5,7 @@ import SmallLightServices
 
 @MainActor
 public final class AppViewModel: ObservableObject {
-    @Published public private(set) var statusText: String = NSLocalizedString("status.idle", bundle: .module, comment: "")
+    @Published public private(set) var statusText: String = UILocalized.string("status.paused")
     @Published public private(set) var isListening: Bool = false
     @Published public private(set) var pendingDecision: ActionDecision?
     @Published public private(set) var lastActionDescription: String?
@@ -13,6 +13,7 @@ public final class AppViewModel: ObservableObject {
     @Published public private(set) var lastAction: CompletedAction?
 
     private let orchestrator: ActionOrchestrating
+    private var isMonitoringActive = false
 
     public init(orchestrator: ActionOrchestrating) {
         self.orchestrator = orchestrator
@@ -66,6 +67,18 @@ public final class AppViewModel: ObservableObject {
         return actionLabel(for: decision.intendedAction)
     }
 
+    public func setMonitoringActive(_ active: Bool) {
+        isMonitoringActive = active
+        if active {
+            if pendingDecision == nil {
+                statusText = localized("status.watch")
+            }
+        } else {
+            isListening = false
+            statusText = localized("status.paused")
+        }
+    }
+
     public func undoLastAction() {
         guard let completed = lastAction else { return }
         do {
@@ -80,7 +93,7 @@ public final class AppViewModel: ObservableObject {
     private func updateState(with decision: ActionDecision?) {
         guard let decision else {
             isListening = false
-            statusText = localized("status.idle")
+            statusText = isMonitoringActive ? localized("status.watch") : localized("status.paused")
             return
         }
 

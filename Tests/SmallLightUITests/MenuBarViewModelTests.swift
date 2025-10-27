@@ -22,6 +22,7 @@ final class MenuBarViewModelTests: XCTestCase {
             confirmationTracker: confirmation
         )
         let viewModel = AppViewModel(orchestrator: orchestrator)
+        viewModel.setMonitoringActive(true)
 
         viewModel.refreshState()
         XCTAssertTrue(viewModel.isListening)

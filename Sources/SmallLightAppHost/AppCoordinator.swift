@@ -54,6 +54,7 @@ public final class AppCoordinator: ObservableObject {
         cursorController.update(listening: viewModel.isListening)
         notificationController.start()
         startTimerIfNeeded()
+        viewModel.setMonitoringActive(true)
     }
 
     public func stop() {
@@ -65,6 +66,7 @@ public final class AppCoordinator: ObservableObject {
         cursorController.reset()
         lastConfirmationPath = nil
         lastCompletionPath = nil
+        viewModel.setMonitoringActive(false)
     }
 
     private func startTimerIfNeeded() {

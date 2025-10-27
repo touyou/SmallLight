@@ -4,6 +4,7 @@
 "status.watch" = "監視中";
 "status.compress.ready" = "圧縮の準備完了";
 "status.decompress.ready" = "展開の準備完了";
+"status.paused" = "監視が一時停止中";
 "notification.complete.body.compress" = "%@ を作成しました";
 "notification.complete.body.decompress" = "%@ に展開しました";
 "notification.complete.body.default" = "操作が完了しました";

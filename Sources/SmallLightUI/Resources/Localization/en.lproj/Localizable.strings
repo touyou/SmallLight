@@ -4,6 +4,7 @@
 "status.watch" = "Watching";
 "status.compress.ready" = "Compress ready";
 "status.decompress.ready" = "Decompress ready";
+"status.paused" = "Monitoring paused";
 "notification.complete.body.compress" = "Created %@";
 "notification.complete.body.decompress" = "Extracted to %@";
 "notification.complete.body.default" = "Action finished";
