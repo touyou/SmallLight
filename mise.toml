@@ -1,2 +1,23 @@
 [tools]
 codex = "latest"
+
+[tasks.bootstrap]
+description = "Install tooling and run initial checks"
+run = """
+brew install swiftlint swiftformat || true
+swift build
+"""
+
+[tasks.lint]
+description = "Run SwiftLint and swift-format in lint mode"
+run = """
+swiftlint --strict
+swift format lint --configuration .swift-format.json .
+"""
+
+[tasks.test]
+description = "Execute swift and xcodebuild test suites"
+run = """
+swift test
+xcodebuild test -scheme SmallLight-Package -destination 'platform=macOS'
+"""

@@ -1,0 +1,29 @@
+included:
+  - Sources
+  - Tests
+
+excluded:
+  - Sources/SmallLightAppHost/Resources
+
+disabled_rules:
+  - trailing_whitespace
+  - identifier_name
+
+opt_in_rules:
+  - empty_string
+  - fatal_error_message
+
+line_length: 100
+
+type_name:
+  min_length: 3
+  max_length: 60
+
+identifier_name:
+  min_length: 2
+  max_length: 60
+
+trailing_comma:
+  mandatory_comma: true
+
+reporter: "xcode"

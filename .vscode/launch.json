@@ -1,0 +1,22 @@
+{
+  "configurations": [
+    {
+      "type": "swift",
+      "request": "launch",
+      "args": [],
+      "cwd": "${workspaceFolder:SmallLight}",
+      "name": "Debug SmallLight",
+      "program": "${workspaceFolder:SmallLight}/.build/debug/SmallLight",
+      "preLaunchTask": "swift: Build Debug SmallLight"
+    },
+    {
+      "type": "swift",
+      "request": "launch",
+      "args": [],
+      "cwd": "${workspaceFolder:SmallLight}",
+      "name": "Release SmallLight",
+      "program": "${workspaceFolder:SmallLight}/.build/release/SmallLight",
+      "preLaunchTask": "swift: Build Release SmallLight"
+    }
+  ]
+}
