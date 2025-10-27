@@ -17,19 +17,27 @@ public final class AppCoordinator: ObservableObject {
     private let notificationController: NotificationController
     private var lastConfirmationPath: String?
     private var lastCompletionPath: String?
+    private let undoManager: UndoStagingManaging
+    private let preferences: PreferencesStoring
+    private var currentChord: HotKeyChord
 
-    public init(
+    init(
         viewModel: AppViewModel,
         hotKeyManager: HotKeyManaging,
         chord: HotKeyChord,
         cursorController: CursorVisualControlling = CursorVisualController(),
-        notificationController: NotificationController = NotificationController()
+        notificationController: NotificationController = NotificationController(),
+        undoManager: UndoStagingManaging,
+        preferences: PreferencesStoring
     ) {
         self.viewModel = viewModel
         self.hotKeyManager = hotKeyManager
         self.chord = chord
         self.cursorController = cursorController
         self.notificationController = notificationController
+        self.undoManager = undoManager
+        self.preferences = preferences
+        self.currentChord = chord
         self.notificationController.delegate = self
     }
 
@@ -45,6 +53,7 @@ public final class AppCoordinator: ObservableObject {
         cursorController.update(listening: viewModel.isListening)
         notificationController.start()
         startTimerIfNeeded()
+        bindPreferences()
     }
 
     public func stop() {
@@ -110,23 +119,55 @@ public final class AppCoordinator: ObservableObject {
             }
             .store(in: &cancellables)
     }
+
+    private func bindPreferences() {
+        preferences.preferencesDidChange
+            .sink { [weak self] in
+                self?.applyPreferences()
+            }
+            .store(in: &cancellables)
+        applyPreferences()
+    }
+
+    private func applyPreferences() {
+        let retention = preferences.undoRetentionInterval
+        undoManager.updateRetentionInterval(retention)
+
+        let newChord = preferences.preferredHotKey
+        guard newChord != currentChord else { return }
+        hotKeyManager.unregister()
+        do {
+            try hotKeyManager.register(chord: newChord)
+            currentChord = newChord
+        } catch {
+            NSLog("[SmallLight] Failed to update hotkey preference: \(error.localizedDescription)")
+        }
+    }
 }
 
 public extension AppCoordinator {
     static func preview(viewModel: AppViewModel) -> AppCoordinator {
         let hotKeyManager = PreviewHotKeyManager()
-        return AppCoordinator(viewModel: viewModel, hotKeyManager: hotKeyManager, chord: .defaultActionChord)
+        let preferences = PreferencesStore.shared
+        let undoManager = FileUndoStagingManager()
+        return AppCoordinator(
+            viewModel: viewModel,
+            hotKeyManager: hotKeyManager,
+            chord: .defaultActionChord,
+            undoManager: undoManager,
+            preferences: preferences
+        )
     }
 }
 
 extension AppCoordinator: NotificationControllerDelegate {
-    public func handleConfirmationRequest(forPath path: String) {
+    func handleConfirmationRequest(forPath path: String) {
         guard let decision = viewModel.pendingDecision, decision.item.url.path == path else { return }
         viewModel.confirmPendingAction()
         viewModel.performPendingAction()
     }
 
-    public func handleUndoRequest(forPath path: String) {
+    func handleUndoRequest(forPath path: String) {
         guard let lastAction = viewModel.lastAction, lastAction.item.url.path == path else { return }
         viewModel.undoLastAction()
     }

@@ -5,7 +5,7 @@ import SmallLightServices
 
 @MainActor
 public final class AppViewModel: ObservableObject {
-    @Published public private(set) var statusText: String = "Idle"
+    @Published public private(set) var statusText: String = NSLocalizedString("status.idle", bundle: .main, comment: "")
     @Published public private(set) var isListening: Bool = false
     @Published public private(set) var pendingDecision: ActionDecision?
     @Published public private(set) var lastActionDescription: String?
@@ -25,7 +25,7 @@ public final class AppViewModel: ObservableObject {
             updateState(with: decision)
         } catch {
             isListening = false
-            statusText = "Error"
+            statusText = localized("status.error")
             pendingDecision = nil
             errorMessage = error.localizedDescription
         }
@@ -70,7 +70,7 @@ public final class AppViewModel: ObservableObject {
         guard let completed = lastAction else { return }
         do {
             try orchestrator.undoLastAction(for: completed.item)
-            lastActionDescription = "Undo restored \(completed.item.url.lastPathComponent)"
+            lastActionDescription = String(format: localized("notification.undo.body"), completed.item.url.lastPathComponent)
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -80,7 +80,7 @@ public final class AppViewModel: ObservableObject {
     private func updateState(with decision: ActionDecision?) {
         guard let decision else {
             isListening = false
-            statusText = "Idle"
+            statusText = localized("status.idle")
             return
         }
 
@@ -89,35 +89,50 @@ public final class AppViewModel: ObservableObject {
         switch decision.intendedAction {
         case .compress, .decompress:
             if decision.requiresConfirmation {
-                statusText = "\(actionLabel(for: decision.intendedAction)) confirmation required"
+                statusText = String(format: localized("status.confirmation"), actionLabel(for: decision.intendedAction))
             } else {
-                statusText = "\(actionLabel(for: decision.intendedAction)) ready"
+                statusText = readyLabel(for: decision.intendedAction)
             }
         case .none:
-            statusText = "Watching"
+            statusText = localized("status.watch")
         }
     }
 
     private func actionLabel(for action: SmallLightAction) -> String {
         switch action {
         case .compress:
-            return "Compress"
+            return localized("status.compress.ready")
         case .decompress:
-            return "Decompress"
+            return localized("status.decompress.ready")
         case .none:
-            return "Observe"
+            return localized("status.watch")
         }
     }
 
     private func actionOutcomeDescription(for action: SmallLightAction, destination: URL) -> String {
         switch action {
         case .compress:
-            return "Compressed to \(destination.lastPathComponent)"
+            return String(format: localized("notification.complete.body.compress"), destination.lastPathComponent)
         case .decompress:
-            return "Decompressed to \(destination.lastPathComponent)"
+            return String(format: localized("notification.complete.body.decompress"), destination.lastPathComponent)
         case .none:
-            return "No action performed"
+            return localized("notification.complete.body.default")
         }
+    }
+
+    private func readyLabel(for action: SmallLightAction) -> String {
+        switch action {
+        case .compress:
+            return localized("status.compress.ready")
+        case .decompress:
+            return localized("status.decompress.ready")
+        case .none:
+            return localized("status.watch")
+        }
+    }
+
+    private func localized(_ key: String) -> String {
+        NSLocalizedString(key, bundle: .main, comment: "")
     }
 }
 

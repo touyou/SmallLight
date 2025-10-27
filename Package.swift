@@ -5,6 +5,7 @@ import PackageDescription
 
 let package = Package(
     name: "SmallLight",
+    defaultLocalization: "en",
     platforms: [
         .macOS(.v13)
     ],

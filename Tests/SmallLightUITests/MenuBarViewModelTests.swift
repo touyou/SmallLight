@@ -26,12 +26,12 @@ final class MenuBarViewModelTests: XCTestCase {
         viewModel.refreshState()
         XCTAssertTrue(viewModel.isListening)
         XCTAssertTrue(viewModel.isAwaitingConfirmation)
-        XCTAssertEqual(viewModel.statusText, "Compress confirmation required")
+        XCTAssertEqual(viewModel.statusText, String(format: NSLocalizedString("status.confirmation", bundle: .main, comment: ""), NSLocalizedString("status.compress.ready", bundle: .main, comment: "")))
 
         viewModel.confirmPendingAction()
         XCTAssertFalse(viewModel.isAwaitingConfirmation)
         XCTAssertTrue(viewModel.canExecuteAction)
-        XCTAssertEqual(viewModel.statusText, "Compress ready")
+        XCTAssertEqual(viewModel.statusText, NSLocalizedString("status.compress.ready", bundle: .main, comment: ""))
 
         viewModel.performPendingAction()
         XCTAssertNotNil(viewModel.lastActionDescription)

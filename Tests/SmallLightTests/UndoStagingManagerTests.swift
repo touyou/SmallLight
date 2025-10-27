@@ -49,6 +49,35 @@ final class UndoStagingManagerTests: XCTestCase {
         XCTAssertEqual(restoredContents, "undo")
     }
 
+    func testCleanupRemovesExpiredArtifacts() throws {
+        let tempRoot = try temporaryDirectory()
+        let retention: TimeInterval = 60
+        var currentDate = Date()
+        let manager = FileUndoStagingManager(
+            rootDirectory: tempRoot,
+            fileManager: fileManager,
+            dateProvider: { currentDate },
+            retentionInterval: retention
+        )
+
+        // Stage an item and mark it as old
+        let target = FinderItem(url: tempRoot.appendingPathComponent("Folder", isDirectory: true), isDirectory: true, isArchive: false)
+        try fileManager.createDirectory(at: target.url, withIntermediateDirectories: true)
+        _ = try manager.stagingURL(for: target, action: .compress)
+
+        let allURLs = try XCTUnwrap(fileManager.contentsOfDirectory(at: tempRoot, includingPropertiesForKeys: nil))
+        for url in allURLs {
+            try fileManager.setAttributes([.modificationDate: Date(timeIntervalSinceNow: -(retention * 2))], ofItemAtPath: url.path)
+        }
+
+        currentDate.addTimeInterval(retention * 2)
+        let removed = try manager.cleanupExpiredArtifacts()
+
+        XCTAssertGreaterThan(removed, 0)
+        let remaining = try fileManager.contentsOfDirectory(atPath: tempRoot.path)
+        XCTAssertTrue(remaining.isEmpty)
+    }
+
     private func temporaryDirectory() throws -> URL {
         let url = fileManager.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try fileManager.createDirectory(at: url, withIntermediateDirectories: true)

@@ -30,6 +30,11 @@ public protocol UndoStagingManaging {
     func stagingURL(for item: FinderItem, action: SmallLightAction) throws -> URL
     func stageOriginal(at url: URL) throws -> URL
     func restore(from stagingURL: URL, to destinationURL: URL) throws
+    func updateRetentionInterval(_ interval: TimeInterval)
+}
+
+public extension UndoStagingManaging {
+    func updateRetentionInterval(_ interval: TimeInterval) {}
 }
 
 public protocol ConfirmationTracking {

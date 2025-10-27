@@ -15,29 +15,29 @@ public struct MenuBarView: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("SmallLight")
+                Text(LocalizedStringKey("menu.section.title"))
                     .font(.headline)
                 Text(viewModel.statusText)
                     .font(.subheadline)
                 if viewModel.isListening {
-                    Text("Listening…")
+                    Text(LocalizedStringKey("menu.listening"))
                         .font(.caption)
                         .foregroundColor(.orange)
                 }
             }
 
             if let actionLabel = viewModel.pendingActionLabel {
-                Text("Action: \(actionLabel)")
+                Text(String(format: NSLocalizedString("menu.action.label", bundle: .main, comment: ""), actionLabel))
                     .font(.footnote)
             }
 
             if viewModel.isAwaitingConfirmation {
-                Button("Confirm Action") {
+                Button(LocalizedStringKey("menu.button.confirm")) {
                     viewModel.confirmPendingAction()
                 }
                 .buttonStyle(.borderedProminent)
             } else if viewModel.canExecuteAction {
-                Button("Run Action") {
+                Button(LocalizedStringKey("menu.button.run")) {
                     viewModel.performPendingAction()
                 }
                 .buttonStyle(.bordered)
@@ -50,7 +50,7 @@ public struct MenuBarView: View {
             }
 
             if viewModel.lastAction != nil {
-                Button("Undo Last Action") {
+                Button(LocalizedStringKey("menu.button.undo")) {
                     viewModel.undoLastAction()
                 }
                 .buttonStyle(.link)

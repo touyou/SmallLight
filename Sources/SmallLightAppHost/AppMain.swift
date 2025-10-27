@@ -7,11 +7,13 @@ import SwiftUI
 struct SmallLightApp: App {
     @StateObject private var viewModel: AppViewModel
     @StateObject private var coordinator: AppCoordinator
+    private let preferencesStore: PreferencesStore
 
     init() {
         let bootstrap = Self.bootstrap()
         _viewModel = StateObject(wrappedValue: bootstrap.viewModel)
         _coordinator = StateObject(wrappedValue: bootstrap.coordinator)
+        preferencesStore = bootstrap.preferences
     }
 
     var body: some Scene {
@@ -25,16 +27,17 @@ struct SmallLightApp: App {
         .menuBarExtraStyle(.window)
 
         Settings {
-            SettingsView()
+        SettingsView(viewModel: PreferencesViewModel(store: preferencesStore, launchAgentManager: LaunchAgentManager()))
         }
     }
 
-    private static func bootstrap() -> (viewModel: AppViewModel, coordinator: AppCoordinator) {
+    private static func bootstrap() -> (viewModel: AppViewModel, coordinator: AppCoordinator, preferences: PreferencesStore) {
         let finder = AccessibilityFinderTargetingService()
         let hotKeyState = InMemoryHotKeyState()
         let compression = FileCompressionService()
         let logger = FileAuditLogger()
-        let undoManager = FileUndoStagingManager()
+        let preferences = PreferencesStore.shared
+        let undoManager = FileUndoStagingManager(retentionInterval: preferences.undoRetentionInterval)
         let confirmationTracker = UserDefaultsConfirmationTracker()
         let orchestrator = DefaultActionOrchestrator(
             finderService: finder,
@@ -47,17 +50,13 @@ struct SmallLightApp: App {
         let viewModel = AppViewModel(orchestrator: orchestrator)
         let hotKeyRegistrar = CarbonHotKeyRegistrar()
         let hotKeyManager = DefaultHotKeyManager(registrar: hotKeyRegistrar, state: hotKeyState)
-        let coordinator = AppCoordinator(viewModel: viewModel, hotKeyManager: hotKeyManager, chord: .defaultActionChord)
-        return (viewModel, coordinator)
-    }
-}
-
-private struct SettingsView: View {
-    var body: some View {
-        Form {
-            Text("Preferences coming soon.")
-        }
-        .padding()
-        .frame(width: 320, height: 200)
+        let coordinator = AppCoordinator(
+            viewModel: viewModel,
+            hotKeyManager: hotKeyManager,
+            chord: preferences.preferredHotKey,
+            undoManager: undoManager,
+            preferences: preferences
+        )
+        return (viewModel, coordinator, preferences)
     }
 }

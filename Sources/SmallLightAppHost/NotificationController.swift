@@ -4,13 +4,13 @@ import SmallLightUI
 import UserNotifications
 
 @MainActor
-public protocol NotificationControllerDelegate: AnyObject {
+protocol NotificationControllerDelegate: AnyObject {
     func handleConfirmationRequest(forPath path: String)
     func handleUndoRequest(forPath path: String)
 }
 
 @MainActor
-public final class NotificationController: NSObject {
+final class NotificationController: NSObject {
     private enum Identifiers {
         static let confirmationCategory = "io.smalllight.confirmation"
         static let completionCategory = "io.smalllight.completion"
@@ -63,8 +63,9 @@ public final class NotificationController: NSObject {
     func presentConfirmation(for decision: ActionDecision) {
         guard let center = notificationCenter else { return }
         let content = UNMutableNotificationContent()
-        content.title = "SmallLight Preview"
-        content.body = "Prepare to \(decision.intendedAction == .compress ? "compress" : "decompress") \(decision.item.url.lastPathComponent)."
+        content.title = NSLocalizedString("notification.confirm.title", bundle: .main, comment: "")
+        let key = decision.intendedAction == .compress ? "notification.confirm.body.compress" : "notification.confirm.body.decompress"
+        content.body = String(format: NSLocalizedString(key, bundle: .main, comment: ""), decision.item.url.lastPathComponent)
         content.categoryIdentifier = Identifiers.confirmationCategory
         content.userInfo = ["path": decision.item.url.path]
 
@@ -84,14 +85,14 @@ public final class NotificationController: NSObject {
     func presentCompletion(for action: SmallLightAction, item: FinderItem, destination: URL) {
         guard let center = notificationCenter else { return }
         let content = UNMutableNotificationContent()
-        content.title = "SmallLight Completed"
+        content.title = NSLocalizedString("notification.complete.title", bundle: .main, comment: "")
         switch action {
         case .compress:
-            content.body = "Created \(destination.lastPathComponent)"
+            content.body = String(format: NSLocalizedString("notification.complete.body.compress", bundle: .main, comment: ""), destination.lastPathComponent)
         case .decompress:
-            content.body = "Extracted to \(destination.lastPathComponent)"
+            content.body = String(format: NSLocalizedString("notification.complete.body.decompress", bundle: .main, comment: ""), destination.lastPathComponent)
         case .none:
-            content.body = "Action finished"
+            content.body = NSLocalizedString("notification.complete.body.default", bundle: .main, comment: "")
         }
         content.categoryIdentifier = Identifiers.completionCategory
         content.userInfo = [

@@ -6,17 +6,20 @@ public final class FileUndoStagingManager: UndoStagingManaging {
     private let fileManager: FileManager
     private let dateProvider: () -> Date
     private let isoFormatter: ISO8601DateFormatter
+    private var retentionInterval: TimeInterval
 
     public init(
         rootDirectory: URL = FileUndoStagingManager.defaultRootDirectory(),
         fileManager: FileManager = .default,
-        dateProvider: @escaping () -> Date = Date.init
+        dateProvider: @escaping () -> Date = Date.init,
+        retentionInterval: TimeInterval = 60 * 60 * 24 * 7
     ) {
         self.rootDirectory = rootDirectory
         self.fileManager = fileManager
         self.dateProvider = dateProvider
         self.isoFormatter = ISO8601DateFormatter()
         self.isoFormatter.formatOptions = [.withInternetDateTime, .withDashSeparatorInDate, .withColonSeparatorInTime]
+        self.retentionInterval = retentionInterval
     }
 
     public static func defaultRootDirectory() -> URL {
@@ -33,7 +36,7 @@ public final class FileUndoStagingManager: UndoStagingManaging {
             .appendingPathComponent(action.folderName, isDirectory: true)
             .appendingPathComponent(timestamp, isDirectory: true)
         try fileManager.createDirectory(at: actionDirectory, withIntermediateDirectories: true)
-
+        try cleanupExpiredArtifacts()
         return actionDirectory.appendingPathComponent(item.url.lastPathComponent, isDirectory: item.isDirectory)
     }
 
@@ -44,6 +47,7 @@ public final class FileUndoStagingManager: UndoStagingManaging {
         let uniqueName = "\(UUID().uuidString)-\(url.lastPathComponent)"
         let destination = originalsDirectory.appendingPathComponent(uniqueName, isDirectory: false)
         try safeCopyItem(at: url, to: destination)
+        try cleanupExpiredArtifacts()
         return destination
     }
 
@@ -63,6 +67,35 @@ public final class FileUndoStagingManager: UndoStagingManaging {
             try fileManager.removeItem(at: destination)
         }
         try fileManager.copyItem(at: source, to: destination)
+    }
+
+    @discardableResult
+    public func cleanupExpiredArtifacts(referenceDate: Date? = nil) throws -> Int {
+        let now = referenceDate ?? dateProvider()
+        var removedCount = 0
+
+        guard fileManager.fileExists(atPath: rootDirectory.path) else { return removedCount }
+
+        let resourceKeys: Set<URLResourceKey> = [.contentModificationDateKey, .creationDateKey, .isDirectoryKey]
+        guard let enumerator = fileManager.enumerator(at: rootDirectory, includingPropertiesForKeys: Array(resourceKeys), options: [.skipsHiddenFiles]) else {
+            return removedCount
+        }
+
+        for case let fileURL as URL in enumerator {
+            guard fileURL != rootDirectory else { continue }
+            let values = try fileURL.resourceValues(forKeys: resourceKeys)
+            let reference = values.contentModificationDate ?? values.creationDate
+            guard let reference else { continue }
+            if now.timeIntervalSince(reference) > retentionInterval {
+                try fileManager.removeItem(at: fileURL)
+                removedCount += 1
+            }
+        }
+        return removedCount
+    }
+
+    public func updateRetentionInterval(_ interval: TimeInterval) {
+        retentionInterval = interval
     }
 }
 

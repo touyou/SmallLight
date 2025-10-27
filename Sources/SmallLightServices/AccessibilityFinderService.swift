@@ -76,7 +76,7 @@ public final class AccessibilityFinderTargetingService: FinderTargetingService {
                 return nil
             }
 
-            current = parentValue as! AXUIElement
+            current = unsafeDowncast(parentValue as AnyObject, to: AXUIElement.self)
         }
     }
 
