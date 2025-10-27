@@ -223,12 +223,14 @@ final class AppCoordinator: ObservableObject {
         resolve(at: location, bypassDedup: true)
     }
 
+    /// Opens Finder pointing at the undo staging directory so users can inspect or restore staged originals manually.
     func revealStagingFolder() {
         let url = FileUndoStagingManager.defaultRootDirectory()
         ensureDirectoryExists(at: url)
         NSWorkspace.shared.activateFileViewerSelecting([url])
     }
 
+    /// Opens Finder pointing at the audit log (or its directory when the log has not been created yet).
     func revealAuditLog() {
         let directory = AppSupportPaths.auditLogDirectory
         ensureDirectoryExists(at: directory)
@@ -267,6 +269,7 @@ final class AppCoordinator: ObservableObject {
         }
     }
 
+    /// Creates the contextual HUD message for regular files and folders, surfacing the parent location.
     private func contextMessage(for resolution: FinderItemResolution) -> String? {
         let url = URL(fileURLWithPath: resolution.path)
         let parent = url.deletingLastPathComponent().path
@@ -277,6 +280,8 @@ final class AppCoordinator: ObservableObject {
         }
     }
 
+    /// Ensures the provided directory exists before we attempt to reveal it in Finder. Errors are intentionally ignored
+    /// because failing to create the directory should not crash the coordinator – Finder will simply open the parent.
     private func ensureDirectoryExists(at url: URL) {
         try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
     }
@@ -293,6 +298,8 @@ private struct AppSupportPaths {
     }
 }
 
+/// A lightweight wrapper used to treat non-Sendable protocol conformers as sendable when hopping across queues.
+/// The coordinator guarantees main-actor usage, so boxing is safe in practice.
 private final class SendableBox<Value>: @unchecked Sendable {
     let value: Value
 
