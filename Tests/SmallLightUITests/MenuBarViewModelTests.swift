@@ -25,20 +25,33 @@ final class MenuBarViewModelTests: XCTestCase {
 
         viewModel.refreshState()
         XCTAssertTrue(viewModel.isListening)
+        XCTAssertTrue(viewModel.isAwaitingConfirmation)
+        XCTAssertEqual(viewModel.statusText, "Compress confirmation required")
+
+        viewModel.confirmPendingAction()
+        XCTAssertFalse(viewModel.isAwaitingConfirmation)
+        XCTAssertTrue(viewModel.canExecuteAction)
         XCTAssertEqual(viewModel.statusText, "Compress ready")
+
+        viewModel.performPendingAction()
+        XCTAssertNotNil(viewModel.lastActionDescription)
+        XCTAssertNotNil(viewModel.lastAction)
+        viewModel.undoLastAction()
     }
 }
 
 private final class UITestConfirmationTracker: ConfirmationTracking {
+    private var confirmed: Set<URL> = []
+
     func needsConfirmation(for url: URL) -> Bool {
-        true
+        !confirmed.contains(url)
     }
 
     func markConfirmed(for url: URL) {
-        // no-op
+        confirmed.insert(url)
     }
 
     func resetConfirmation(for url: URL) {
-        // no-op
+        confirmed.remove(url)
     }
 }

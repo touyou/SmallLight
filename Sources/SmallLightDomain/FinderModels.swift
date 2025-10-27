@@ -1,6 +1,6 @@
 import Foundation
 
-public enum SmallLightAction: Equatable {
+public enum SmallLightAction: Equatable, Codable {
     case compress
     case decompress
     case none

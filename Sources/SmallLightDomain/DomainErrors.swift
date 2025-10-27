@@ -7,4 +7,5 @@ public enum SmallLightError: Error, Equatable {
     case decompressionFailed(reason: String)
     case confirmationPending
     case undoUnavailable
+    case auditFailed(reason: String)
 }
