@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import Foundation
+import SmallLightDomain
 import SmallLightUI
 
 /// Coordinates FinderOverlayDebugger subsystems such as the overlay, hover detection, HUD, and clipboard integration.
@@ -31,6 +32,8 @@ final class AppCoordinator: ObservableObject {
     private let resolver: FinderItemResolving
     private let zipHandler: ZipHandling
     private let hotKeyCenter: HotKeyRegistering
+    private let auditLogger: AuditLogging
+    private let undoManager: UndoStagingManaging
     private var didWarnAccessibility = false
 
     private lazy var hoverMonitor: HoverMonitor = hoverMonitorFactory(settings.trigger) { [weak self] event in
@@ -52,8 +55,10 @@ final class AppCoordinator: ObservableObject {
             HUDWindowController(viewModel: viewModel, copyHandler: copyHandler)
         },
         resolver: FinderItemResolving = FinderItemResolver(),
-        zipHandler: ZipHandling = ZipHandler(),
-        hotKeyCenter: HotKeyRegistering = HotKeyCenter()
+        zipHandler: ZipHandling,
+        hotKeyCenter: HotKeyRegistering,
+        auditLogger: AuditLogging,
+        undoManager: UndoStagingManaging
     ) {
         self.settings = settings
         self.overlayManager = overlayManager
@@ -65,6 +70,8 @@ final class AppCoordinator: ObservableObject {
         self.resolver = resolver
         self.zipHandler = zipHandler
         self.hotKeyCenter = hotKeyCenter
+        self.auditLogger = auditLogger
+        self.undoManager = undoManager
     }
 
     func start() {
@@ -145,9 +152,24 @@ final class AppCoordinator: ObservableObject {
     private func handleZipExtraction(for resolution: FinderItemResolution, dedupKey: String) {
         let zipHandler = self.zipHandler
         let dedupStore = self.dedupStore
+        let auditLogger = self.auditLogger
+        let undoManager = self.undoManager
         resolutionQueue.async { [weak self] in
             do {
+                let itemURL = URL(fileURLWithPath: resolution.path)
+                let finderItem = FinderItem(
+                    url: itemURL,
+                    isDirectory: resolution.isDirectory,
+                    isArchive: resolution.isArchive
+                )
+                _ = try undoManager.stagingURL(for: finderItem, action: .decompress)
+                _ = try undoManager.stageOriginal(at: itemURL)
                 let destination = try zipHandler.extract(zipPath: resolution.path)
+                do {
+                    try auditLogger.record(action: .decompress, item: finderItem, destination: destination)
+                } catch {
+                    NSLog("[FinderOverlayDebugger] Failed to record audit entry: \(error)")
+                }
                 Task { @MainActor [weak self] in
                     guard let self else { return }
                     let message = UILocalized.formatted("hud.zip.success", destination.path)

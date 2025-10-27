@@ -6,25 +6,30 @@ import XCTest
 @MainActor
 final class AppCoordinatorManualResolveTests: XCTestCase {
     func testManualResolveBypassesDedup() throws {
+        let settings = AppSettings()
         let overlay = OverlayStub()
         let hud = HUDStub()
         let resolver = ResolverStub(result: FinderItemResolution(path: "/tmp/manual.txt", isDirectory: false, isArchive: false))
         let zip = ZipHandlerStub()
         let hotKeys = HotKeyCenterStub()
         let dedup = DeduplicationStore(ttl: 10, capacity: 8)
+        let auditLogger = AuditLoggerStub()
+        let undoManager = UndoManagerStub()
 
         let coordinator = AppCoordinator(
-            settings: AppSettings(),
+            settings: settings,
             overlayManager: overlay,
             pasteboard: .general,
             dedupStore: dedup,
-            hoverMonitorFactory: { settings, handler in
-                HoverMonitor(settings: settings, handler: handler)
+            hoverMonitorFactory: { triggerSettings, handler in
+                HoverMonitor(settings: triggerSettings, handler: handler)
             },
             hudWindowFactory: { _, _ in hud },
             resolver: resolver,
             zipHandler: zip,
-            hotKeyCenter: hotKeys
+            hotKeyCenter: hotKeys,
+            auditLogger: auditLogger,
+            undoManager: undoManager
         )
 
         // Pre-mark the dedup store with the resolution key.
@@ -123,5 +128,27 @@ private final class HotKeyCenterStub: HotKeyRegistering {
 
     func unregisterAll() {
         entries.removeAll()
+    }
+}
+
+private final class AuditLoggerStub: AuditLogging, @unchecked Sendable {
+    private(set) var records: [(SmallLightAction, FinderItem, URL)] = []
+
+    func record(action: SmallLightAction, item: FinderItem, destination: URL) throws {
+        records.append((action, item, destination))
+    }
+}
+
+private final class UndoManagerStub: UndoStagingManaging, @unchecked Sendable {
+    func stagingURL(for item: FinderItem, action: SmallLightAction) throws -> URL {
+        URL(fileURLWithPath: "/tmp/staging/\(UUID().uuidString)")
+    }
+
+    func stageOriginal(at url: URL) throws -> URL {
+        URL(fileURLWithPath: "/tmp/staging/original-\(UUID().uuidString)")
+    }
+
+    func restore(from stagingURL: URL, to destinationURL: URL) throws {
+        // no-op
     }
 }

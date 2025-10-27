@@ -1,4 +1,5 @@
 import AppKit
+import SmallLightServices
 import SmallLightUI
 import SwiftUI
 
@@ -7,7 +8,22 @@ struct SmallLightApp: App {
     @StateObject private var coordinator: AppCoordinator
 
     init() {
-        let coordinator = AppCoordinator(settings: AppSettings())
+        let settings = AppSettings()
+        let coordinator = AppCoordinator(
+            settings: settings,
+            overlayManager: OverlayWindowManager(),
+            pasteboard: .general,
+            dedupStore: nil,
+            hoverMonitorFactory: HoverMonitor.init,
+            hudWindowFactory: { viewModel, copyHandler in
+                HUDWindowController(viewModel: viewModel, copyHandler: copyHandler)
+            },
+            resolver: FinderItemResolver(),
+            zipHandler: ZipHandler(),
+            hotKeyCenter: HotKeyCenter(),
+            auditLogger: FileAuditLogger(),
+            undoManager: FileUndoStagingManager()
+        )
         coordinator.start()
         _coordinator = StateObject(wrappedValue: coordinator)
     }
