@@ -6,9 +6,10 @@
 - When notifications are required, launch from the app bundle (not `swift run`) and approve the notification prompt.
 
 ## Daily Usage
-- Hold the configured modifier chord (default: ⌥⇧ Space) and hover Finder items:
+- Hold the configured modifier chord (default: ⌃⌥ L) and hover Finder items:
   - Folders compress to `<name>.zip`.
   - Zip archives decompress into sibling directories.
+- Use the menu bar's **Pause/Resume Monitoring** button to temporarily disable or re-enable SmallLight without quitting the app.
 - The cursor glow indicates SmallLight is listening. Menu bar status reflects readiness or errors.
 - Confirmation notifications appear on first use of a path. Accept them from Notification Center or the SmallLight menu.
 - After each action, the notification includes an **Undo** button; the same path is available in the menu UI.

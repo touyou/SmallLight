@@ -25,12 +25,10 @@ final class PreferencesViewModel: ObservableObject {
         assetPath = store.assetPackPath ?? ""
         selectedHotKey = HotKeyPreset(from: store.preferredHotKey)
 
-        store.preferencesDidChange
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] in
-                self?.refreshFromStore()
-            }
-            .store(in: &cancellables)
+        store.observeChanges { [weak self] in
+            self?.refreshFromStore()
+        }
+        .store(in: &cancellables)
     }
 
     func refreshFromStore() {
@@ -144,18 +142,18 @@ struct SettingsView: View {
 }
 
 enum HotKeyPreset: String, CaseIterable, Identifiable {
+    case controlOptionL
     case optionShiftSpace
-    case controlOptionSpace
     case commandOptionSpace
 
     var id: String { rawValue }
 
     var chord: HotKeyChord {
         switch self {
+        case .controlOptionL:
+            return HotKeyChord(keyCode: 37, modifiers: [.control, .option])
         case .optionShiftSpace:
             return HotKeyChord(keyCode: 49, modifiers: [.option, .shift])
-        case .controlOptionSpace:
-            return HotKeyChord(keyCode: 49, modifiers: [.control, .option])
         case .commandOptionSpace:
             return HotKeyChord(keyCode: 49, modifiers: [.command, .option])
         }
@@ -163,10 +161,10 @@ enum HotKeyPreset: String, CaseIterable, Identifiable {
 
     var localizedName: String {
         switch self {
+        case .controlOptionL:
+            return NSLocalizedString("hotkey.controlOptionL", bundle: .main, comment: "")
         case .optionShiftSpace:
             return NSLocalizedString("hotkey.optionShiftSpace", bundle: .main, comment: "")
-        case .controlOptionSpace:
-            return NSLocalizedString("hotkey.controlOptionSpace", bundle: .main, comment: "")
         case .commandOptionSpace:
             return NSLocalizedString("hotkey.commandOptionSpace", bundle: .main, comment: "")
         }
@@ -177,6 +175,6 @@ enum HotKeyPreset: String, CaseIterable, Identifiable {
             self = preset
             return
         }
-        self = .optionShiftSpace
+        self = .controlOptionL
     }
 }

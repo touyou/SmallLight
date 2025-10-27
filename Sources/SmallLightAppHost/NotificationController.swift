@@ -41,7 +41,7 @@ final class NotificationController: NSObject {
             }
         }
 
-        let confirmAction = UNNotificationAction(identifier: Identifiers.confirmAction, title: "Confirm", options: [.foreground])
+        let confirmAction = UNNotificationAction(identifier: Identifiers.confirmAction, title: AppStrings.text("notification.action.confirm"), options: [.foreground])
         let confirmationCategory = UNNotificationCategory(
             identifier: Identifiers.confirmationCategory,
             actions: [confirmAction],
@@ -49,7 +49,7 @@ final class NotificationController: NSObject {
             options: []
         )
 
-        let undoAction = UNNotificationAction(identifier: Identifiers.undoAction, title: "Undo", options: [.foreground])
+        let undoAction = UNNotificationAction(identifier: Identifiers.undoAction, title: AppStrings.text("notification.action.undo"), options: [.foreground])
         let completionCategory = UNNotificationCategory(
             identifier: Identifiers.completionCategory,
             actions: [undoAction],
@@ -63,9 +63,9 @@ final class NotificationController: NSObject {
     func presentConfirmation(for decision: ActionDecision) {
         guard let center = notificationCenter else { return }
         let content = UNMutableNotificationContent()
-        content.title = NSLocalizedString("notification.confirm.title", bundle: .main, comment: "")
+        content.title = AppStrings.text("notification.confirm.title")
         let key = decision.intendedAction == .compress ? "notification.confirm.body.compress" : "notification.confirm.body.decompress"
-        content.body = String(format: NSLocalizedString(key, bundle: .main, comment: ""), decision.item.url.lastPathComponent)
+        content.body = AppStrings.formatted(key, decision.item.url.lastPathComponent)
         content.categoryIdentifier = Identifiers.confirmationCategory
         content.userInfo = ["path": decision.item.url.path]
 
@@ -85,14 +85,14 @@ final class NotificationController: NSObject {
     func presentCompletion(for action: SmallLightAction, item: FinderItem, destination: URL) {
         guard let center = notificationCenter else { return }
         let content = UNMutableNotificationContent()
-        content.title = NSLocalizedString("notification.complete.title", bundle: .main, comment: "")
+        content.title = AppStrings.text("notification.complete.title")
         switch action {
         case .compress:
-            content.body = String(format: NSLocalizedString("notification.complete.body.compress", bundle: .main, comment: ""), destination.lastPathComponent)
+            content.body = AppStrings.formatted("notification.complete.body.compress", destination.lastPathComponent)
         case .decompress:
-            content.body = String(format: NSLocalizedString("notification.complete.body.decompress", bundle: .main, comment: ""), destination.lastPathComponent)
+            content.body = AppStrings.formatted("notification.complete.body.decompress", destination.lastPathComponent)
         case .none:
-            content.body = NSLocalizedString("notification.complete.body.default", bundle: .main, comment: "")
+            content.body = AppStrings.text("notification.complete.body.default")
         }
         content.categoryIdentifier = Identifiers.completionCategory
         content.userInfo = [

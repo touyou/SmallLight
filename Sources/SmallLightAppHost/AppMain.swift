@@ -14,20 +14,30 @@ struct SmallLightApp: App {
         _viewModel = StateObject(wrappedValue: bootstrap.viewModel)
         _coordinator = StateObject(wrappedValue: bootstrap.coordinator)
         preferencesStore = bootstrap.preferences
+        bootstrap.coordinator.start()
     }
 
     var body: some Scene {
+        let monitoringBinding = Binding<Bool>(
+            get: { coordinator.isArmed },
+            set: { newValue in
+                if newValue {
+                    coordinator.start()
+                } else {
+                    coordinator.stop()
+                }
+            }
+        )
         MenuBarExtra("SmallLight", systemImage: "lightbulb") {
             MenuBarView(
                 viewModel: viewModel,
-                onAppear: { coordinator.start() },
-                onDisappear: { coordinator.stop() }
+                monitoringEnabled: monitoringBinding
             )
         }
         .menuBarExtraStyle(.window)
 
         Settings {
-        SettingsView(viewModel: PreferencesViewModel(store: preferencesStore, launchAgentManager: LaunchAgentManager()))
+            SettingsView(viewModel: PreferencesViewModel(store: preferencesStore, launchAgentManager: LaunchAgentManager()))
         }
     }
 

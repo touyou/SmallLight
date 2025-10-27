@@ -37,5 +37,5 @@ public struct HotKeyModifiers: OptionSet, Equatable, Sendable {
 }
 
 public extension HotKeyChord {
-    static let defaultActionChord = HotKeyChord(keyCode: 49, modifiers: [.option, .shift])
+    static let defaultActionChord = HotKeyChord(keyCode: 37, modifiers: [.option, .control])
 }

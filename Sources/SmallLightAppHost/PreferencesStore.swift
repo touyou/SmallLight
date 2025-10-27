@@ -8,8 +8,7 @@ protocol PreferencesStoring: AnyObject {
     var assetPackPath: String? { get set }
     var launchAtLogin: Bool { get set }
     var preferredHotKey: HotKeyChord { get set }
-
-    var preferencesDidChange: AnyPublisher<Void, Never> { get }
+    func observeChanges(_ handler: @escaping () -> Void) -> AnyCancellable
 }
 
 @MainActor
@@ -27,12 +26,14 @@ final class PreferencesStore: PreferencesStoring {
     private let defaults: UserDefaults
     private let subject = PassthroughSubject<Void, Never>()
 
-    var preferencesDidChange: AnyPublisher<Void, Never> {
-        subject.eraseToAnyPublisher()
-    }
-
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+    }
+
+    func observeChanges(_ handler: @escaping () -> Void) -> AnyCancellable {
+        subject
+            .receive(on: RunLoop.main)
+            .sink(receiveValue: handler)
     }
 
     var undoRetentionInterval: TimeInterval {

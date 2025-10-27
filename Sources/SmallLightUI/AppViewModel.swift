@@ -5,7 +5,7 @@ import SmallLightServices
 
 @MainActor
 public final class AppViewModel: ObservableObject {
-    @Published public private(set) var statusText: String = NSLocalizedString("status.idle", bundle: .main, comment: "")
+    @Published public private(set) var statusText: String = NSLocalizedString("status.idle", bundle: .module, comment: "")
     @Published public private(set) var isListening: Bool = false
     @Published public private(set) var pendingDecision: ActionDecision?
     @Published public private(set) var lastActionDescription: String?
@@ -132,7 +132,7 @@ public final class AppViewModel: ObservableObject {
     }
 
     private func localized(_ key: String) -> String {
-        NSLocalizedString(key, bundle: .main, comment: "")
+        NSLocalizedString(key, bundle: .module, comment: "")
     }
 }
 

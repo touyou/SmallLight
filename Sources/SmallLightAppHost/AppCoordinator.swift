@@ -9,9 +9,8 @@ public final class AppCoordinator: ObservableObject {
     private let viewModel: AppViewModel
     private let hotKeyManager: HotKeyManaging
     private let chord: HotKeyChord
-    private let timerQueue = DispatchQueue(label: "io.smalllight.action-loop", qos: .userInteractive)
-    private var timer: DispatchSourceTimer?
-    private var isRunning = false
+    private var timer: Timer?
+    @Published private(set) var isArmed: Bool = false
     private let cursorController: CursorVisualControlling
     private var cancellables: Set<AnyCancellable> = []
     private let notificationController: NotificationController
@@ -20,6 +19,7 @@ public final class AppCoordinator: ObservableObject {
     private let undoManager: UndoStagingManaging
     private let preferences: PreferencesStoring
     private var currentChord: HotKeyChord
+    private var bindingsConfigured = false
 
     init(
         viewModel: AppViewModel,
@@ -42,27 +42,26 @@ public final class AppCoordinator: ObservableObject {
     }
 
     public func start() {
-        guard !isRunning else { return }
-        isRunning = true
+        guard !isArmed else { return }
+        configureBindingsIfNeeded()
+        isArmed = true
+        currentChord = preferences.preferredHotKey
         do {
-            try hotKeyManager.register(chord: chord)
+            try hotKeyManager.register(chord: currentChord)
         } catch {
             NSLog("[SmallLight] Failed to register hot key: \(error.localizedDescription)")
         }
-        bindViewModel()
         cursorController.update(listening: viewModel.isListening)
         notificationController.start()
         startTimerIfNeeded()
-        bindPreferences()
     }
 
     public func stop() {
-        guard isRunning else { return }
-        isRunning = false
-        timer?.cancel()
+        guard isArmed else { return }
+        isArmed = false
+        timer?.invalidate()
         timer = nil
         hotKeyManager.unregister()
-        cancellables.removeAll()
         cursorController.reset()
         lastConfirmationPath = nil
         lastCompletionPath = nil
@@ -70,20 +69,17 @@ public final class AppCoordinator: ObservableObject {
 
     private func startTimerIfNeeded() {
         guard timer == nil else { return }
-        let timer = DispatchSource.makeTimerSource(queue: timerQueue)
-        timer.schedule(deadline: .now(), repeating: .milliseconds(250))
-        timer.setEventHandler { [weak self] in
-            guard let self else { return }
+        let newTimer = Timer(timeInterval: 0.25, repeats: true) { [weak viewModel] _ in
+            guard let viewModel else { return }
             Task { @MainActor in
-                self.viewModel.refreshState()
+                viewModel.refreshState()
             }
         }
-        timer.resume()
-        self.timer = timer
+        RunLoop.main.add(newTimer, forMode: .common)
+        timer = newTimer
     }
 
     private func bindViewModel() {
-        cancellables.removeAll()
         viewModel.$isListening
             .removeDuplicates()
             .sink { [weak self] listening in
@@ -121,12 +117,26 @@ public final class AppCoordinator: ObservableObject {
     }
 
     private func bindPreferences() {
-        preferences.preferencesDidChange
-            .sink { [weak self] in
-                self?.applyPreferences()
-            }
-            .store(in: &cancellables)
+        let cancellable = preferences.observeChanges { [weak self] in
+            self?.applyPreferences()
+        }
+        cancellables.insert(cancellable)
         applyPreferences()
+    }
+
+    public func toggleArmed() {
+        if isArmed {
+            stop()
+        } else {
+            start()
+        }
+    }
+
+    private func configureBindingsIfNeeded() {
+        guard !bindingsConfigured else { return }
+        bindViewModel()
+        bindPreferences()
+        bindingsConfigured = true
     }
 
     private func applyPreferences() {
@@ -135,10 +145,11 @@ public final class AppCoordinator: ObservableObject {
 
         let newChord = preferences.preferredHotKey
         guard newChord != currentChord else { return }
+        currentChord = newChord
+        guard isArmed else { return }
         hotKeyManager.unregister()
         do {
             try hotKeyManager.register(chord: newChord)
-            currentChord = newChord
         } catch {
             NSLog("[SmallLight] Failed to update hotkey preference: \(error.localizedDescription)")
         }

@@ -27,6 +27,9 @@ let package = Package(
             dependencies: [
                 "SmallLightDomain",
                 "SmallLightServices"
+            ],
+            resources: [
+                .process("Resources")
             ]
         ),
         .executableTarget(

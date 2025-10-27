@@ -10,6 +10,8 @@
 "menu.button.confirm" = "Confirm Action";
 "menu.button.run" = "Run Action";
 "menu.button.undo" = "Undo Last Action";
+"menu.button.pause" = "Pause Monitoring";
+"menu.button.resume" = "Resume Monitoring";
 "menu.last.action.prefix" = "%@";
 "preferences.undo.section" = "Undo";
 "preferences.undo.slider" = "Retention (days)";
@@ -24,7 +26,7 @@
 "preferences.reveal.logs" = "Reveal Logs";
 "preferences.window.title" = "SmallLight Preferences";
 "hotkey.optionShiftSpace" = "⌥⇧ Space";
-"hotkey.controlOptionSpace" = "⌃⌥ Space";
+"hotkey.controlOptionL" = "⌃⌥ L";
 "hotkey.commandOptionSpace" = "⌘⌥ Space";
 "notification.confirm.title" = "SmallLight Preview";
 "notification.confirm.body.compress" = "Prepare to compress %@.";
@@ -34,3 +36,5 @@
 "notification.complete.body.decompress" = "Extracted to %@";
 "notification.complete.body.default" = "Action finished";
 "notification.undo.body" = "Restored %@";
+"notification.action.confirm" = "Confirm";
+"notification.action.undo" = "Undo";

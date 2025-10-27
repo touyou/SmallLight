@@ -10,6 +10,8 @@
 "menu.button.confirm" = "操作を確認";
 "menu.button.run" = "操作を実行";
 "menu.button.undo" = "直前の操作を元に戻す";
+"menu.button.pause" = "監視を一時停止";
+"menu.button.resume" = "監視を再開";
 "menu.last.action.prefix" = "%@";
 "preferences.undo.section" = "Undo";
 "preferences.undo.slider" = "保持日数";
@@ -24,7 +26,7 @@
 "preferences.reveal.logs" = "ログを表示";
 "preferences.window.title" = "SmallLight 設定";
 "hotkey.optionShiftSpace" = "⌥⇧ Space";
-"hotkey.controlOptionSpace" = "⌃⌥ Space";
+"hotkey.controlOptionL" = "⌃⌥ L";
 "hotkey.commandOptionSpace" = "⌘⌥ Space";
 "notification.confirm.title" = "SmallLight プレビュー";
 "notification.confirm.body.compress" = "%@ を圧縮します";
@@ -34,3 +36,5 @@
 "notification.complete.body.decompress" = "%@ に展開しました";
 "notification.complete.body.default" = "操作が完了しました";
 "notification.undo.body" = "%@ を復元しました";
+"notification.action.confirm" = "確認";
+"notification.action.undo" = "元に戻す";
