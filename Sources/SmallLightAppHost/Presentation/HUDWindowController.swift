@@ -30,12 +30,14 @@ final class HUDWindowController {
         window.backgroundColor = .clear
         window.level = .floating
         window.hasShadow = false
+        window.ignoresMouseEvents = false
+        window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         window.contentViewController = hostingController
         positionWindow()
     }
 
     func show() {
-        window.makeKeyAndOrderFront(nil)
+        window.orderFrontRegardless()
     }
 
     func hide() {

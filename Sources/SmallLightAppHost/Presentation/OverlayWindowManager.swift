@@ -55,7 +55,7 @@ final class OverlayWindowManager {
         windows.forEach { $0.orderOut(nil) }
         windows = NSScreen.screens.map { screen in
             let window = OverlayWindow(screen: screen)
-            window.orderFront(nil)
+            window.orderFrontRegardless()
             return window
         }
     }
@@ -64,8 +64,11 @@ final class OverlayWindowManager {
         for window in windows {
             guard let screen = window.screen else { continue }
             if screen.frame.contains(point) {
-                window.orderFront(nil)
-                let localPoint = CGPoint(x: point.x - screen.frame.origin.x, y: point.y - screen.frame.origin.y)
+                window.orderFrontRegardless()
+                let localPoint = CGPoint(
+                    x: point.x - screen.frame.origin.x,
+                    y: point.y - screen.frame.origin.y
+                )
                 window.updateIndicator(to: localPoint)
             }
         }
