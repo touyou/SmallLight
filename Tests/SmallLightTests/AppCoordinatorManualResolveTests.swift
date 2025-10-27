@@ -1,6 +1,7 @@
 @testable import SmallLightAppHost
 import AppKit
 import SmallLightDomain
+import SmallLightUI
 import XCTest
 
 @MainActor
@@ -44,6 +45,8 @@ final class AppCoordinatorManualResolveTests: XCTestCase {
 
         XCTAssertEqual(resolver.callCount, 1, "Manual resolve should invoke resolver even when dedup contains the key")
         XCTAssertEqual(coordinator.hudModel.history.first?.path, "/tmp/manual.txt")
+        let expectedMessage = UILocalized.formatted("hud.info.file", "/tmp")
+        XCTAssertEqual(coordinator.hudModel.history.first?.message, expectedMessage)
         XCTAssertTrue(overlay.receivedUpdate, "Manual resolve should update overlay position")
     }
 

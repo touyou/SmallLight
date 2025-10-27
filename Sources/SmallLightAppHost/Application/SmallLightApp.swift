@@ -51,6 +51,13 @@ private struct MenuContent: View {
                 Text(UILocalized.string("menu.focus.hud"))
             }
             Divider()
+            Button(action: coordinator.revealStagingFolder) {
+                Text(UILocalized.string("menu.reveal.staging"))
+            }
+            Button(action: coordinator.revealAuditLog) {
+                Text(UILocalized.string("menu.reveal.logs"))
+            }
+            Divider()
             Button {
                 NSApp.terminate(nil)
             } label: {

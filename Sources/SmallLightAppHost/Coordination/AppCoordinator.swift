@@ -2,6 +2,7 @@ import AppKit
 import Combine
 import Foundation
 import SmallLightDomain
+import SmallLightServices
 import SmallLightUI
 
 /// Coordinates FinderOverlayDebugger subsystems such as the overlay, hover detection, HUD, and clipboard integration.
@@ -32,8 +33,8 @@ final class AppCoordinator: ObservableObject {
     private let resolver: FinderItemResolving
     private let zipHandler: ZipHandling
     private let hotKeyCenter: HotKeyRegistering
-    private let auditLogger: AuditLogging
-    private let undoManager: UndoStagingManaging
+    private let auditLoggerBox: SendableBox<any AuditLogging>
+    private let undoManagerBox: SendableBox<any UndoStagingManaging>
     private var didWarnAccessibility = false
 
     private lazy var hoverMonitor: HoverMonitor = hoverMonitorFactory(settings.trigger) { [weak self] event in
@@ -70,9 +71,12 @@ final class AppCoordinator: ObservableObject {
         self.resolver = resolver
         self.zipHandler = zipHandler
         self.hotKeyCenter = hotKeyCenter
-        self.auditLogger = auditLogger
-        self.undoManager = undoManager
+        self.auditLoggerBox = SendableBox(auditLogger)
+        self.undoManagerBox = SendableBox(undoManager)
     }
+
+    private var auditLogger: any AuditLogging { auditLoggerBox.value }
+    private var undoManager: any UndoStagingManaging { undoManagerBox.value }
 
     func start() {
         guard mode == .idle else { return }
@@ -128,7 +132,8 @@ final class AppCoordinator: ObservableObject {
         if resolution.isArchive, settings.zip.behaviour == .auto {
             handleZipExtraction(for: resolution, dedupKey: dedupKey)
         } else {
-            present(path: resolution.path)
+            let message = contextMessage(for: resolution)
+            present(path: resolution.path, message: message)
         }
     }
 
@@ -152,8 +157,8 @@ final class AppCoordinator: ObservableObject {
     private func handleZipExtraction(for resolution: FinderItemResolution, dedupKey: String) {
         let zipHandler = self.zipHandler
         let dedupStore = self.dedupStore
-        let auditLogger = self.auditLogger
-        let undoManager = self.undoManager
+        let auditLoggerBox = self.auditLoggerBox
+        let undoManagerBox = self.undoManagerBox
         resolutionQueue.async { [weak self] in
             do {
                 let itemURL = URL(fileURLWithPath: resolution.path)
@@ -162,11 +167,12 @@ final class AppCoordinator: ObservableObject {
                     isDirectory: resolution.isDirectory,
                     isArchive: resolution.isArchive
                 )
+                let undoManager = undoManagerBox.value
                 _ = try undoManager.stagingURL(for: finderItem, action: .decompress)
                 _ = try undoManager.stageOriginal(at: itemURL)
                 let destination = try zipHandler.extract(zipPath: resolution.path)
                 do {
-                    try auditLogger.record(action: .decompress, item: finderItem, destination: destination)
+                    try auditLoggerBox.value.record(action: .decompress, item: finderItem, destination: destination)
                 } catch {
                     NSLog("[FinderOverlayDebugger] Failed to record audit entry: \(error)")
                 }
@@ -217,6 +223,23 @@ final class AppCoordinator: ObservableObject {
         resolve(at: location, bypassDedup: true)
     }
 
+    func revealStagingFolder() {
+        let url = FileUndoStagingManager.defaultRootDirectory()
+        ensureDirectoryExists(at: url)
+        NSWorkspace.shared.activateFileViewerSelecting([url])
+    }
+
+    func revealAuditLog() {
+        let directory = AppSupportPaths.auditLogDirectory
+        ensureDirectoryExists(at: directory)
+        let logFile = directory.appendingPathComponent("actions.log")
+        if FileManager.default.fileExists(atPath: logFile.path) {
+            NSWorkspace.shared.activateFileViewerSelecting([logFile])
+        } else {
+            NSWorkspace.shared.activateFileViewerSelecting([directory])
+        }
+    }
+
     private func resolve(at location: CGPoint, bypassDedup: Bool) {
         let resolver = self.resolver
         let dedupStore = self.dedupStore
@@ -242,5 +265,38 @@ final class AppCoordinator: ObservableObject {
                 }
             }
         }
+    }
+
+    private func contextMessage(for resolution: FinderItemResolution) -> String? {
+        let url = URL(fileURLWithPath: resolution.path)
+        let parent = url.deletingLastPathComponent().path
+        if resolution.isDirectory {
+            return UILocalized.formatted("hud.info.folder", parent)
+        } else {
+            return UILocalized.formatted("hud.info.file", parent)
+        }
+    }
+
+    private func ensureDirectoryExists(at url: URL) {
+        try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+    }
+}
+
+private struct AppSupportPaths {
+    static var baseDirectory: URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library/Application Support")
+    }
+
+    static var auditLogDirectory: URL {
+        baseDirectory.appendingPathComponent("SmallLight/logs", isDirectory: true)
+    }
+}
+
+private final class SendableBox<Value>: @unchecked Sendable {
+    let value: Value
+
+    init(_ value: Value) {
+        self.value = value
     }
 }

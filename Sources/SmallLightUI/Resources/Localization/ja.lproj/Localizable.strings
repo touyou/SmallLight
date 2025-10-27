@@ -25,5 +25,9 @@
 "menu.show.hud" = "HUD を表示";
 "menu.focus.hud" = "HUD にフォーカス";
 "menu.quit" = "FinderOverlayDebugger を終了";
+"menu.reveal.staging" = "ステージングフォルダを表示";
+"menu.reveal.logs" = "監査ログを表示";
 "hud.zip.success" = "解凍完了: %@";
 "hud.zip.error" = "解凍に失敗しました: %@";
+"hud.info.folder" = "フォルダ • 親: %@";
+"hud.info.file" = "ファイル • 親: %@";
