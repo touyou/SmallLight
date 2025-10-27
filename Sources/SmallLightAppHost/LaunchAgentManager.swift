@@ -53,7 +53,7 @@ final class LaunchAgentManager: LaunchAgentManaging {
             "Label": "io.smalllight.app",
             "Program": "\(bundlePath)/Contents/MacOS/SmallLight",
             "RunAtLoad": true,
-            "KeepAlive": false
+            "KeepAlive": false,
         ]
 
         let parent = agentURL.deletingLastPathComponent()

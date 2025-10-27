@@ -1,192 +1,110 @@
+import AppKit
 import Combine
 import Foundation
-import SmallLightDomain
-import SmallLightServices
 import SmallLightUI
 
+/// Coordinates FinderOverlayDebugger subsystems such as the overlay, hover detection, HUD, and clipboard integration.
 @MainActor
-public final class AppCoordinator: ObservableObject {
-    private let viewModel: AppViewModel
-    private let hotKeyManager: HotKeyManaging
-    private let chord: HotKeyChord
-    private var timer: Timer?
-    @Published private(set) var isArmed: Bool = false
-    private let cursorController: CursorVisualControlling
-    private var cancellables: Set<AnyCancellable> = []
-    private let notificationController: NotificationController
-    private var lastConfirmationPath: String?
-    private var lastCompletionPath: String?
-    private let undoManager: UndoStagingManaging
-    private let preferences: PreferencesStoring
-    private var currentChord: HotKeyChord
-    private var bindingsConfigured = false
+final class AppCoordinator: ObservableObject {
+    enum Mode {
+        case idle
+        case watching
+    }
+
+    @Published private(set) var mode: Mode = .idle
+    @Published private(set) var hudVisible: Bool = false
+
+    var isRunning: Bool { mode == .watching }
+
+    var hudModel: HUDViewModel { hudViewModel }
+
+    private let settings: AppSettings
+    private let overlayManager: OverlayWindowManager
+    private let pasteboard: NSPasteboard
+    private let hoverMonitorFactory: (AppSettings.Trigger, @escaping HoverMonitor.Handler) -> HoverMonitor
+    private let hudWindowFactory: @MainActor (HUDViewModel, @escaping (HUDEntry) -> Void) -> HUDWindowController
+    private let dedupStore: DeduplicationStore
+
+    private lazy var hoverMonitor: HoverMonitor = hoverMonitorFactory(settings.trigger) { [weak self] event in
+        self?.handleHoverEvent(event)
+    }
+    private lazy var hudWindowController: HUDWindowController = hudWindowFactory(hudViewModel) { [weak self] entry in
+        self?.copyToClipboard(entry)
+    }
+    private let hudViewModel: HUDViewModel
 
     init(
-        viewModel: AppViewModel,
-        hotKeyManager: HotKeyManaging,
-        chord: HotKeyChord,
-        cursorController: CursorVisualControlling = CursorVisualController(),
-        notificationController: NotificationController = NotificationController(),
-        undoManager: UndoStagingManaging,
-        preferences: PreferencesStoring
+        settings: AppSettings = AppSettings(),
+        overlayManager: OverlayWindowManager = OverlayWindowManager(),
+        pasteboard: NSPasteboard = .general,
+        dedupStore: DeduplicationStore? = nil,
+        hoverMonitorFactory: @escaping (AppSettings.Trigger, @escaping HoverMonitor.Handler) -> HoverMonitor = HoverMonitor.init,
+        hudWindowFactory: @MainActor @escaping (HUDViewModel, @escaping (HUDEntry) -> Void) -> HUDWindowController = { viewModel, copyHandler in
+            HUDWindowController(viewModel: viewModel, copyHandler: copyHandler)
+        }
     ) {
-        self.viewModel = viewModel
-        self.hotKeyManager = hotKeyManager
-        self.chord = chord
-        self.cursorController = cursorController
-        self.notificationController = notificationController
-        self.undoManager = undoManager
-        self.preferences = preferences
-        self.currentChord = chord
-        self.notificationController.delegate = self
+        self.settings = settings
+        self.overlayManager = overlayManager
+        self.pasteboard = pasteboard
+        self.hoverMonitorFactory = hoverMonitorFactory
+        self.hudWindowFactory = hudWindowFactory
+        self.hudViewModel = HUDViewModel(historyLimit: settings.hud.historyLimit, autoCopyEnabled: settings.hud.autoCopyEnabled)
+        self.dedupStore = dedupStore ?? DeduplicationStore(ttl: settings.dedup.ttl, capacity: settings.dedup.capacity)
     }
 
-    public func start() {
-        guard !isArmed else { return }
-        configureBindingsIfNeeded()
-        isArmed = true
-        currentChord = preferences.preferredHotKey
-        do {
-            try hotKeyManager.register(chord: currentChord)
-        } catch {
-            NSLog("[SmallLight] Failed to register hot key: \(error.localizedDescription)")
-        }
-        cursorController.update(listening: viewModel.isListening)
-        notificationController.start()
-        startTimerIfNeeded()
-        viewModel.setMonitoringActive(true)
+    func start() {
+        guard mode == .idle else { return }
+        hoverMonitor.start()
+        hudWindowController.show()
+        hudVisible = true
+        mode = .watching
     }
 
-    public func stop() {
-        guard isArmed else { return }
-        isArmed = false
-        timer?.invalidate()
-        timer = nil
-        hotKeyManager.unregister()
-        cursorController.reset()
-        lastConfirmationPath = nil
-        lastCompletionPath = nil
-        viewModel.setMonitoringActive(false)
+    func stop() {
+        guard mode == .watching else { return }
+        hoverMonitor.stop()
+        mode = .idle
     }
 
-    private func startTimerIfNeeded() {
-        guard timer == nil else { return }
-        let newTimer = Timer(timeInterval: 0.25, repeats: true) { [weak viewModel] _ in
-            guard let viewModel else { return }
-            Task { @MainActor in
-                viewModel.refreshState()
-            }
-        }
-        RunLoop.main.add(newTimer, forMode: .common)
-        timer = newTimer
-    }
-
-    private func bindViewModel() {
-        viewModel.$isListening
-            .removeDuplicates()
-            .sink { [weak self] listening in
-                guard let self else { return }
-                self.cursorController.update(listening: listening)
-            }
-            .store(in: &cancellables)
-
-        viewModel.$pendingDecision
-            .sink { [weak self] decision in
-                guard let self else { return }
-                guard let decision = decision, decision.requiresConfirmation else {
-                    self.lastConfirmationPath = nil
-                    return
-                }
-                let path = decision.item.url.path
-                if self.lastConfirmationPath != path {
-                    self.notificationController.presentConfirmation(for: decision)
-                    self.lastConfirmationPath = path
-                }
-            }
-            .store(in: &cancellables)
-
-        viewModel.$lastAction
-            .compactMap { $0 }
-            .sink { [weak self] completed in
-                guard let self else { return }
-                let path = completed.item.url.path
-                if self.lastCompletionPath != path {
-                    self.notificationController.presentCompletion(for: completed.action, item: completed.item, destination: completed.destination)
-                    self.lastCompletionPath = path
-                }
-            }
-            .store(in: &cancellables)
-    }
-
-    private func bindPreferences() {
-        let cancellable = preferences.observeChanges { [weak self] in
-            self?.applyPreferences()
-        }
-        cancellables.insert(cancellable)
-        applyPreferences()
-    }
-
-    public func toggleArmed() {
-        if isArmed {
-            stop()
+    func toggleHUDVisibility() {
+        if hudWindowController.isVisible {
+            hudWindowController.hide()
+            hudVisible = false
         } else {
-            start()
+            hudWindowController.show()
+            hudVisible = true
         }
     }
 
-    private func configureBindingsIfNeeded() {
-        guard !bindingsConfigured else { return }
-        bindViewModel()
-        bindPreferences()
-        bindingsConfigured = true
+    func focusHUD() {
+        hudWindowController.focus()
+        hudVisible = true
     }
 
-    private func applyPreferences() {
-        let retention = preferences.undoRetentionInterval
-        undoManager.updateRetentionInterval(retention)
-
-        let newChord = preferences.preferredHotKey
-        guard newChord != currentChord else { return }
-        currentChord = newChord
-        guard isArmed else { return }
-        hotKeyManager.unregister()
-        do {
-            try hotKeyManager.register(chord: newChord)
-        } catch {
-            NSLog("[SmallLight] Failed to update hotkey preference: \(error.localizedDescription)")
+    func present(path: String, message: String? = nil) {
+        let entry = HUDEntry(path: path, message: message)
+        hudViewModel.append(entry)
+        if hudViewModel.autoCopyEnabled {
+            copyToClipboard(entry)
         }
     }
-}
 
-public extension AppCoordinator {
-    static func preview(viewModel: AppViewModel) -> AppCoordinator {
-        let hotKeyManager = PreviewHotKeyManager()
-        let preferences = PreferencesStore.shared
-        let undoManager = FileUndoStagingManager()
-        return AppCoordinator(
-            viewModel: viewModel,
-            hotKeyManager: hotKeyManager,
-            chord: .defaultActionChord,
-            undoManager: undoManager,
-            preferences: preferences
-        )
-    }
-}
-
-extension AppCoordinator: NotificationControllerDelegate {
-    func handleConfirmationRequest(forPath path: String) {
-        guard let decision = viewModel.pendingDecision, decision.item.url.path == path else { return }
-        viewModel.confirmPendingAction()
-        viewModel.performPendingAction()
+    func clearDedupKey(for path: String, action: String) {
+        let key = dedupKey(for: path, action: action)
+        dedupStore.remove(key)
     }
 
-    func handleUndoRequest(forPath path: String) {
-        guard let lastAction = viewModel.lastAction, lastAction.item.url.path == path else { return }
-        viewModel.undoLastAction()
+    private func handleHoverEvent(_ event: HoverMonitor.Event) {
+        overlayManager.updateCursorPosition(event.location)
+        // Finder resolution pipeline will be connected in Phase 3.
     }
-}
 
-private final class PreviewHotKeyManager: HotKeyManaging {
-    func register(chord: HotKeyChord) throws {}
-    func unregister() {}
+    private func copyToClipboard(_ entry: HUDEntry) {
+        pasteboard.clearContents()
+        pasteboard.setString(entry.path, forType: .string)
+    }
+
+    private func dedupKey(for path: String, action: String) -> String {
+        "\(path)::\(action)"
+    }
 }

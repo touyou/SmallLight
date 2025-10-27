@@ -32,7 +32,7 @@ public final class FileCompressionService: CompressionService {
             "--sequesterRsrc",
             "--keepParent",
             item.url.path,
-            destinationURL.path
+            destinationURL.path,
         ]
 
         do {
@@ -61,7 +61,7 @@ public final class FileCompressionService: CompressionService {
             "-x",
             "-k",
             item.url.path,
-            extractionRoot.path
+            extractionRoot.path,
         ]
 
         do {
@@ -87,7 +87,6 @@ public final class FileCompressionService: CompressionService {
 public protocol ProcessLaunching {
     func run(arguments: [String]) throws
 }
-
 
 public struct DefaultProcessLauncher: ProcessLaunching {
     public init() {}

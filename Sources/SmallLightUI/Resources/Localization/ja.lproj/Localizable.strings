@@ -9,6 +9,9 @@
 "notification.complete.body.decompress" = "%@ に展開しました";
 "notification.complete.body.default" = "操作が完了しました";
 "notification.undo.body" = "%@ を復元しました";
+"hud.title" = "Finder Overlay Debugger";
+"hud.autocopy" = "自動コピー";
+"hud.copy" = "コピー";
 "menu.section.title" = "SmallLight";
 "menu.listening" = "リッスン中…";
 "menu.action.label" = "操作: %@";
@@ -17,3 +20,8 @@
 "menu.button.undo" = "直前の操作を元に戻す";
 "menu.button.pause" = "監視を一時停止";
 "menu.button.resume" = "監視を再開";
+"menu.monitoring" = "監視を有効にする";
+"menu.hide.hud" = "HUD を隠す";
+"menu.show.hud" = "HUD を表示";
+"menu.focus.hud" = "HUD にフォーカス";
+"menu.quit" = "FinderOverlayDebugger を終了";

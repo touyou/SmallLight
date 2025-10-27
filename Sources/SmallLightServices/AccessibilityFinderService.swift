@@ -45,15 +45,13 @@ public final class AccessibilityFinderTargetingService: FinderTargetingService {
     private func resolveURL(from element: AXUIElement) -> URL? {
         if let value: CFTypeRef = try? copyAttribute(element: element, attribute: kAXURLAttribute as CFString),
            CFGetTypeID(value) == CFURLGetTypeID(),
-           let url = value as? URL
-        {
+           let url = value as? URL {
             return url
         }
 
         if let value: CFTypeRef = try? copyAttribute(element: element, attribute: kAXFilenameAttribute as CFString),
            CFGetTypeID(value) == CFStringGetTypeID(),
-           let path = value as? String
-        {
+           let path = value as? String {
             return URL(fileURLWithPath: path)
         }
 

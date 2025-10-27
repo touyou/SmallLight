@@ -1,75 +1,99 @@
-# SmallLight Product Specification
+# FinderOverlayDebugger Product Specification
 
 ## Overview
-SmallLight is a resident macOS utility that listens to the user's cursor position and provides keyboard-gated compression and decompression actions for Finder items. The app delivers a light-themed immersive cursor experience while preserving safe and reversible file operations.
+FinderOverlayDebugger (開発コード: SmallLight) is a resident macOS 13+ utility that brings debugger-style insight to Finder interactions. While a modifier key is held, the app renders a full-screen transparent overlay on every display, tracks the cursor using a lightweight indicator, resolves the underlying Finder item, and presents a HUD showing the resolved path with quick-copy affordances. When the hovered target is a `.zip`, FinderOverlayDebugger optionally unarchives it automatically and logs the outcome.
 
 ## Goals
-- Offer frictionless zip compression/decompression of Finder items under the cursor when the user presents a designated modifier key chord.
-- Provide immediate, visually rich feedback that communicates when actions are armed, executed, or cancelled.
-- Ensure operations are safe, reversible, and auditable for user trust.
+- Provide an always-on transparent overlay that does not interfere with normal interaction (click-through, all Spaces).
+- Detect Finder items under the cursor without clicks, using dwell detection gated by a configurable held key.
+- Resolve absolute file paths reliably and surface them in a right-bottom HUD with copy and history controls.
+- Offer optional automatic unzip behaviour for ZIP files with user-configurable behaviour.
+- Deliver debugging feedback quickly while preventing duplicate triggers through short-term deduplication.
 
 ## Non-Goals
-- General-purpose archive management outside Finder context.
-- Support for archive formats other than `.zip` in the initial release.
-- Automation of file operations without explicit modifier-key intent.
+- Managing archives beyond `.zip` format.
+- Performing path resolution outside Finder UI surfaces.
+- Running inside a sandbox or App Store-compliant environment.
 
 ## Target Environment
-- macOS 13 Ventura and later.
-- Runs as a menu-bar style background application registered as a LaunchAgent for auto-start.
-- Integrates with Finder through accessibility APIs and Core Graphics events.
+- macOS Ventura (13) or later.
+- Runs as a background utility with transparent overlay windows per display.
+- Requires Accessibility permission; does not require Screen Recording or Input Monitoring.
 
-## Personas & User Stories
-- **Creative Professional**: Needs quick packaging of project folders without breaking flow.
-  - *Story*: While holding the configured modifier keys, hovering over a project folder compresses it to `<folder>.zip` and confirms success with cursor glow and notification.
-- **QA Engineer**: Frequently inspects zip builds; wants immediate extraction.
-  - *Story*: Holding the modifier keys over a zip archive triggers decompression into a sibling folder, logging the action for audit.
-- **Power User**: Customizes cursor visuals.
-  - *Story*: Chooses a custom light asset pack, sees the cursor swap when SmallLight is listening, and the glow animation when an action triggers.
+## Personas & Key Scenarios
+- **Build Engineer** – Needs to quickly inspect generated artifacts. *Scenario:* Hold Option, hover a build output inside Finder, see the full path HUD, copy it instantly.
+- **QA Specialist** – Frequently verifies zipped deliverables. *Scenario:* Hover a ZIP for 200 ms; the app auto-unpacks next to the archive and notes completion in the HUD.
+- **Support Analyst** – Captures Finder item paths for bug reports. *Scenario:* Trigger manual resolve hotkey (`Ctrl+Option+P`) to re-run detection even after dedup filters.
 
 ## Functional Requirements
-- The app detects Finder item metadata under the current cursor when the modifier chord is pressed.
-- Compression: When hovering a folder, create `<folder>.zip` in the same directory, skipping if a file with the same name exists and prompting via notification.
-- Decompression: When hovering over a `.zip`, extract to `<zip-name>/` sibling directory, preserving existing files by prompting and staging.
-- Cursor Feedback: Replace the cursor with a light asset when the app is active; animate glow when modifier chord is engaged; display action status (armed, executing, completed, cancelled).
-- Keyboard Shortcut: Provide a configurable global shortcut with default (e.g., `⌥⇧Space`), requiring user confirmation for activation.
-- Safety Gate: No file operations without the modifier chord pressed; show confirmation toast on the first run for each path.
-- Undo: Place original artifacts into `~/Library/Application Support/SmallLight/staging` before moving the final output; allow restoration within a time window.
-- Audit Log: Append JSON or NDJSON entries to `~/Library/Application Support/SmallLight/logs/actions.log` with timestamp, path, action type, result.
-- Preferences UI: Offer settings pane for modifier key selection, cursor asset pack selection, undo window duration, log viewing, and launch at login toggle.
-- Localization: Provide base English strings with hooks for Japanese localization.
+### Overlay Window
+- Maintain one transparent NSWindow per NSScreen.
+- `isOpaque = false`, `backgroundColor = clear`, `ignoresMouseEvents = true`, `level = .screenSaver`.
+- `collectionBehavior` includes `.canJoinAllSpaces`, `.fullScreenAuxiliary`.
+- Hosts a cursor indicator view (16pt circle, system label colour).
 
-## Non-Functional Requirements
-- File operations must complete within reasonable time (e.g., < 1s for <500MB assets where possible).
-- Always perform operations atomically to avoid partial archives.
-- Respect macOS sandboxing and privacy prompts; guide the user through required permissions.
-- Minimize CPU and memory footprint when idle; only activate watchers when necessary.
-- Ensure accessibility compliance: fallback indicators for visually impaired users (e.g., menu icon state).
+### Cursor Tracking & Hover Trigger
+- Install a listen-only CGEventTap for mouse moved / flags changed events.
+- Track current cursor location and modifier flags.
+- Activated when configured held key (`Option` default; configurable) is down.
+- Dwell detection parameters: `dwell_ms = 200`, `debounce_ms = 80`.
+- Only trigger when the hovered element belongs to Finder UI (`filter = only_on_finder_ui`).
 
-## UX & Visual Design Considerations
-- Provide a macOS menu bar icon indicating idle/listening/error states.
-- Cursor visual assets default to a light source motif; allow user-supplied asset packs stored under `~/Library/Application Support/SmallLight/Assets`.
-- Toast notifications summarize actions and offer quick undo button.
-- First-time setup wizard guides through permissions and explains modifier key usage.
+### Path Resolution
+- Perform AX hit-testing at the cursor location to obtain the Finder UI element.
+- Extract filename via `kAXFilenameAttribute`. When base directory cannot be deduced, fall back to AppleScript to retrieve the front Finder window’s target (`useFrontWindowTarget`).
+- Combine directory and filename into an absolute POSIX path.
 
-## Security & Privacy
-- Request and store only necessary permissions (Accessibility, Full Disk Access if required).
-- Persist user preferences with `UserDefaults`, encrypting sensitive data if added later.
-- Do not transmit user data off-device; log files remain local.
+### Debug HUD
+- Present a SwiftUI HUD positioned bottom-right.
+- Shows latest resolved path as monospaced text, includes Copy button and keyboard shortcut (`⌘C`).
+- Maintain history of the last five entries.
+- Configurable automatic copy-to-clipboard.
 
-## Dependencies & Integrations
-- SwiftUI + AppKit bridging for UI.
-- `Compression` framework for zip handling.
-- Core Graphics / Accessibility APIs for cursor position and Finder info.
-- Launch Services for registering at login.
+### Global Hotkeys
+- `Ctrl+Option+Space`: bring app to front and focus HUD.
+- `Ctrl+Option+P`: manual resolve override (ignores dedup TTL).
+- `Command+Option+H`: toggle HUD visibility.
+- Register via Carbon Event Hot Keys; display accessibility prompt if permissions missing.
 
-## Acceptance Criteria
-1. Modifier chord + hover over folder results in `.zip` creation, visual confirmation, undo available, audit entry logged.
-2. Modifier chord + hover over `.zip` extracts contents, original archive staged, undo available, audit entry logged.
-3. Cursor visuals respond to app states, including active listening and action execution.
-4. Preferences pane allows customizing shortcut and asset pack, persisting across restarts.
-5. Automated tests exist covering micro, integration, and system layers, all passing under CI.
+### Accessibility Prompt
+- On launch, if `AXIsProcessTrusted` is false, present an instructional sheet: “システム設定 > プライバシーとセキュリティ > アクセシビリティ で本アプリを許可してください。” Provide quick-link button opening System Settings.
 
-## Open Questions
-- Should we support multi-file selection when Finder selection differs from cursor target?
-- How do we reconcile Finder context detection when multiple windows overlap?
-- What is the default undo retention window?
+### Deduplication Log
+- Maintain in-memory ring buffer (size 256) keyed by `hash(path + action)`.
+- TTL per entry: 3000 ms. Dwell triggers for the same key within TTL are ignored.
+- Manual override hotkey bypasses dedup check (but still re-enqueues fresh TTL entry).
+- Remove dedup key on action error (e.g., unzip failure).
+
+### ZIP Handler
+- When hovered path ends with `.zip`:
+  - Determine extraction destination in the same directory.
+  - If conflicting folder exists, append `_unpacked`.
+  - Execute `/usr/bin/ditto -x -k {zipPath} {destinationDir}`.
+  - Behaviour modes: `auto` (default) vs `prompt` (future preferences).
+  - On success, append HUD history entry “解凍完了: {destinationPath}`.
+  - On failure, HUD: “解凍に失敗しました: {error}”; dedup key removed to allow retry.
+
+## Settings Defaults
+- Trigger: held key Option; dwell 200 ms; debounce 80 ms.
+- Hotkeys: focus app `Ctrl+Option+Space`, manual resolve `Ctrl+Option+P`, toggle HUD `Cmd+Option+H`.
+- HUD: auto copy disabled by default; history size 5.
+- Dedup TTL: 3000 ms.
+- ZIP behaviour: auto; destination same directory.
+
+## Security & Permissions
+- Requires Accessibility permission for hit testing.
+- No Screen Recording or Input Monitoring usage.
+- Operates outside the App Sandbox; App Store distribution not supported.
+
+## Performance & Reliability
+- Keep CGEventTap in listen-only mode to minimise latency.
+- Overlay & HUD updates must stay below 16 ms to maintain responsiveness.
+- Zip decompression executed asynchronously to avoid UI blocking.
+
+## Success Metrics / Acceptance Criteria
+1. Holding the configured key and dwelling over Finder items presents the overlay indicator and resolves to the correct absolute path, shown in HUD and copyable.
+2. Hovering over `.zip` auto-unpacks to the correct destination and notifies the HUD.
+3. Dedup prevents repeated HUD/log updates when hovering repeatedly over the same item within TTL, but manual override re-triggers successfully.
+4. HUD history stores the latest five entries and allows copy via button or `⌘C`.
+5. Application prompts for accessibility permission when unavailable and recovers once granted.

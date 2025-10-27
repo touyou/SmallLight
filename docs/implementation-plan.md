@@ -1,80 +1,80 @@
-# SmallLight Implementation Plan
+# FinderOverlayDebugger Implementation Plan
 
 ## Overview
-This plan outlines the phased delivery of SmallLight, ensuring compliance with the product specification and t_wada-aligned testing principles. Work proceeds outside-in, starting with executable acceptance criteria and iterating through red → green → refactor loops.
+Delivery follows outside-in, test-guided iterations. Each phase concludes with runnable demos and updated specification artefacts. The plan emphasises decomposition into independently testable services (overlay, detection, HUD, automation).
 
-## Phase 0: Project Bootstrap
-- Initialize Swift Package Manager project `SmallLight` with app target and test targets (`SmallLightTests`, `SmallLightUITests`).
-- Configure `swift-format` and `swiftlint` in the repository; add baseline configurations.
-- Set up CI workflow (GitHub Actions or Azure DevOps) running `swift test` and `xcodebuild test -scheme SmallLight`.
-- Create initial documentation structure in `docs/` (already in place), verify contribution guidelines from `AGENTS.md`.
+## Phase 0 – Reboot & Documentation
+- Replace existing spec with FinderOverlayDebugger requirements (done).
+- Create this implementation plan and align with collaboration norms.
+- Audit permissions needed (Accessibility) and document prompts.
 
-## Phase 1: Domain Modeling & Core Services
-1. **Acceptance Criteria Definition**
-   - Write system-level XCTest describing the compression flow triggered by synthetic cursor positioning and modifier simulation.
-   - Draft integration test stubs for Finder metadata retrieval using fakes.
-2. **Domain Modules**
-   - `FinderTargetingService`: determines Finder item under cursor via Accessibility API; expose pure protocol for mocking.
-   - `CompressionService`: handles zip compress/decompress using `Compression` framework; ensure idempotency and staging logic.
-   - `ActionOrchestrator`: coordinates modifier chord detection, target evaluation, operation execution, logging, undo staging.
-3. **Testing**
-   - Micro tests for staging path calculations, naming conflict resolution, undo restoration.
-   - Integration tests using temporary directories for compression/decompression (isolated via `FileManager` mocks or temporary URLs).
+## Phase 1 – Architecture & Scaffolding
+1. **Domain & Settings**
+   - Define immutable `AppSettings` (trigger thresholds, hotkeys, dedup TTL, HUD defaults).
+   - Introduce `DeduplicationStore` with ring buffer + TTL.
+   - Unit tests for dedup behaviour and settings decoding.
+2. **Overlay Infrastructure**
+   - Build `OverlayWindowManager` creating transparent windows per screen.
+   - Add `CursorIndicatorLayer` (CALayer-backed circle).
+   - Smoke tests via dependency-injected screen abstractions.
 
-## Phase 2: Input Handling & Safety Gates
-1. **Global Shortcut Implementation**
-   - Introduce `HotKeyManager` built on Carbon Event Hot Keys; provide wrapper for configurability and testing.
-   - Acceptance test covering modifier chord activation gating operations.
-2. **Safety Mechanisms**
-   - Implement dry-run preview prompting via `NSUserNotification` or `UserNotifications` framework for first-time path actions.
-   - Add undo staging manager storing originals to `~/Library/Application Support/SmallLight/staging` with TTL configuration.
-   - Write integration tests to confirm staging contents and cleanup policy.
+## Phase 2 – Event & Hover Detection
+1. **CGEventTap Integration**
+   - Implement `HoverMonitor` capturing mouse moved / flags changed events.
+   - Detect held-key matches, manage dwell & debounce timers.
+   - Add tests simulating event sequences (using synthetic monitors or test doubles).
+2. **Global Hotkeys**
+   - Build `HotKeyCenter` registering `Ctrl+Option+Space`, `Ctrl+Option+P`, `⌘⌥H`.
+   - Verify callbacks fire in unit environment (Carbon stubs).
 
-## Phase 3: UI & Feedback Loop
-1. **Menu Bar App Skeleton**
-   - Build SwiftUI-based status bar interface showing state (idle/listening/error) and shortcuts to preferences/logs.
-   - Micro tests verifying view model state transitions.
-2. **Cursor Visualization**
-   - Implement cursor asset loader supporting default and custom packs; rely on Core Graphics to swap cursor image.
-   - Animate glow (Core Animation) when modifier chord engaged.
-   - Add snapshot/UI tests (where feasible) or instrumentation tests verifying state flags driving visuals.
-3. **Notifications & Toasts**
-   - Provide action result notifications with undo button invoking staging restore.
-   - Test via integration tests ensuring undo reinstates original artifacts and logs entry.
+## Phase 3 – Finder Resolution & Dedup
+1. **Accessibility Resolution Pipeline**
+   - Implement `FinderItemResolver` using `AXUIElementCopyElementAtPosition`.
+   - Fallback AppleScript to retrieve base directory when needed.
+   - Unit tests for script builder and path composition logic.
+2. **Trigger Orchestration**
+   - Wire `HoverMonitor` → `FinderItemResolver` → `DeduplicationStore`.
+   - Provide manual override path that bypasses dedup TTL.
+   - Add integration tests with fake resolver/deduper.
 
-## Phase 4: Preferences & Persistence
-1. **Preferences Window**
-   - Build SwiftUI settings panes: shortcut picker, asset pack selector, undo retention slider, launch-at-login toggle, log viewer.
-   - Persist settings with `UserDefaults` / `AppStorage`; supply protocols for testing.
-2. **LaunchAgent Integration**
-   - Add helper for registering/unregistering LaunchAgent plist; include manual verification checklist.
-   - Provide integration tests (where possible) or scripted validation for development environment.
+## Phase 4 – HUD & Feedback Loop
+1. **HUD Presentation**
+   - Create SwiftUI HUD view & view model with history (5 entries) and copy support.
+   - Auto-copy controlled via settings flag.
+   - Snapshot/unit tests ensuring history management.
+2. **Status & Overlay Sync**
+   - Update overlay indicator position on mouse move.
+   - Tie HUD visibility to toggle hotkey and focus behaviour.
 
-## Phase 5: Polishing & Hardening
-- Audit logging refinement: ensure NDJSON format with schema validation tests.
-- Localization: add base English strings and scaffolding for Japanese.
-- Performance profiling: measure idle CPU/memory, add regression tests if possible.
-- Accessibility review: verify menu labels, notifications, and fallback states.
+## Phase 5 – ZIP Automation & Notifications
+1. **ZipHandler**
+   - Execute `/usr/bin/ditto` for `.zip` paths, applying suffix if conflicts exist.
+   - Post results to HUD; on error, remove dedup key.
+   - Integration tests using temporary directories.
+2. **HUD/Notification Messaging**
+   - Localise completion/error messages (English/Japanese).
+   - Ensure global focus hotkey brings HUD forward.
 
-## Testing Strategy (Per Phase)
-- **Micro Tests**: Pure Swift logic (naming, staging, asset selection) executed via `swift test`.
-- **Integration Tests**: File-system interactions in temporary directories, hotkey manager with dependency injection, cursor manager using mocked Core Graphics wrappers.
-- **System Tests**: UIAutomator-style tests using `xcodebuild test` verifying end-to-end compression and decompression flows under simulated input.
-- Maintain red → green → refactor discipline; track test evidence in PR descriptions.
+## Phase 6 – Polishing, UX & Docs
+- Accessibility prompt flow with quick link (AppKit sheet).
+- HUD/hotkey instructions in operations guide; update troubleshooting.
+- Performance check: ensure event tap and overlay idle CPU usage is minimal.
+- final localisation review & comment documentation on critical classes.
 
-## Tooling & Automation Tasks
-- Add Makefile or `mise` tasks for `bootstrap`, `lint`, `test` ensuring consistent developer workflow.
-- Configure pre-commit hooks invoking `swift-format` and `swiftlint`.
-- Integrate artifacts (logs, staging) cleanup script executed post-tests.
+## Testing Strategy
+- **Unit**: Dedup store, settings parsing, AppleScript builder, history view model.
+- **Integration**: Hover orchestration with fake resolver, ZipHandler with temp directories, hotkey invocations via Carbon stubs.
+- **Manual**: Accessibility prompt, overlay alignment on multiple displays, Finder path resolution accuracy.
+- Continuous `swift test` and (future) UI screenshot evaluations.
 
-## Risk Mitigation
-- Accessibility permission hurdles: document setup script prompting required permissions; include troubleshooting guide in `docs/`.
-- Finder target ambiguity: implement fallback to Finder selection when cursor target undefined; add tests for both paths.
-- Undo staging growth: schedule cleanup based on retention window; add tests ensuring size constraints enforced.
+## Tooling / Automation
+- Maintain `swift-format` & `swiftlint`.
+- Extend `mise` tasks (`test`, `lint`, `package`) to cover new modules.
+- Prepare manual QA checklist (permissions, multi-display, zip handling).
 
 ## Deliverables Checklist
-- [ ] All acceptance tests documented and automated.
-- [ ] Menu bar app delivers compression/decompression per spec.
-- [ ] Cursor visuals and notifications validated.
-- [ ] Preferences persistent and LaunchAgent optional.
-- [ ] Documentation updated with operation guide, troubleshooting, and testing strategy.
+- [ ] Overlay manager renders indicator on every display.
+- [ ] Hover dwell detection triggers HUD updates with accurate paths.
+- [ ] Hotkeys operational (`focus`, `manual resolve`, `toggle HUD`).
+- [ ] ZIP auto-extraction works with dedup/notifications.
+- [ ] Documentation (product spec, operations guide) reflects new workflow.

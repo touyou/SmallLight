@@ -39,7 +39,7 @@ public final class CarbonHotKeyRegistrar: HotKeyRegistrar {
 
         let eventTypes = [
             EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed)),
-            EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyReleased))
+            EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyReleased)),
         ]
 
         let statusHandler: OSStatus = eventTypes.withUnsafeBufferPointer { buffer in

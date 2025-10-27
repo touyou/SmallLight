@@ -1,25 +1,53 @@
-import SmallLightDomain
-import SmallLightServices
+import AppKit
 import SmallLightUI
 import SwiftUI
 
 @main
 struct SmallLightApp: App {
-    @StateObject private var viewModel: AppViewModel
     @StateObject private var coordinator: AppCoordinator
-    private let preferencesStore: PreferencesStore
 
     init() {
-        let bootstrap = Self.bootstrap()
-        _viewModel = StateObject(wrappedValue: bootstrap.viewModel)
-        _coordinator = StateObject(wrappedValue: bootstrap.coordinator)
-        preferencesStore = bootstrap.preferences
-        bootstrap.coordinator.start()
+        let coordinator = AppCoordinator(settings: AppSettings())
+        coordinator.start()
+        _coordinator = StateObject(wrappedValue: coordinator)
     }
 
     var body: some Scene {
-        let monitoringBinding = Binding<Bool>(
-            get: { coordinator.isArmed },
+        MenuBarExtra("SmallLight", systemImage: "lightbulb") {
+            MenuContent(coordinator: coordinator)
+        }
+        .menuBarExtraStyle(.window)
+    }
+}
+
+private struct MenuContent: View {
+    @ObservedObject var coordinator: AppCoordinator
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Toggle(isOn: monitoringBinding) {
+                Text(UILocalized.string("menu.monitoring"))
+            }
+            Button(action: coordinator.toggleHUDVisibility) {
+                Text(coordinator.hudVisible ? UILocalized.string("menu.hide.hud") : UILocalized.string("menu.show.hud"))
+            }
+            Button(action: coordinator.focusHUD) {
+                Text(UILocalized.string("menu.focus.hud"))
+            }
+            Divider()
+            Button {
+                NSApp.terminate(nil)
+            } label: {
+                Text(UILocalized.string("menu.quit"))
+            }
+        }
+        .padding(16)
+        .frame(minWidth: 220)
+    }
+
+    private var monitoringBinding: Binding<Bool> {
+        Binding(
+            get: { coordinator.isRunning },
             set: { newValue in
                 if newValue {
                     coordinator.start()
@@ -28,45 +56,5 @@ struct SmallLightApp: App {
                 }
             }
         )
-        MenuBarExtra("SmallLight", systemImage: "lightbulb") {
-            MenuBarView(
-                viewModel: viewModel,
-                monitoringEnabled: monitoringBinding
-            )
-        }
-        .menuBarExtraStyle(.window)
-
-        Settings {
-            SettingsView(viewModel: PreferencesViewModel(store: preferencesStore, launchAgentManager: LaunchAgentManager()))
-        }
-    }
-
-    private static func bootstrap() -> (viewModel: AppViewModel, coordinator: AppCoordinator, preferences: PreferencesStore) {
-        let finder = AccessibilityFinderTargetingService()
-        let hotKeyState = InMemoryHotKeyState()
-        let compression = FileCompressionService()
-        let logger = FileAuditLogger()
-        let preferences = PreferencesStore.shared
-        let undoManager = FileUndoStagingManager(retentionInterval: preferences.undoRetentionInterval)
-        let confirmationTracker = UserDefaultsConfirmationTracker()
-        let orchestrator = DefaultActionOrchestrator(
-            finderService: finder,
-            hotKeyState: hotKeyState,
-            compressionService: compression,
-            auditLogger: logger,
-            undoManager: undoManager,
-            confirmationTracker: confirmationTracker
-        )
-        let viewModel = AppViewModel(orchestrator: orchestrator)
-        let hotKeyRegistrar = CarbonHotKeyRegistrar()
-        let hotKeyManager = DefaultHotKeyManager(registrar: hotKeyRegistrar, state: hotKeyState)
-        let coordinator = AppCoordinator(
-            viewModel: viewModel,
-            hotKeyManager: hotKeyManager,
-            chord: preferences.preferredHotKey,
-            undoManager: undoManager,
-            preferences: preferences
-        )
-        return (viewModel, coordinator, preferences)
     }
 }

@@ -9,6 +9,9 @@
 "notification.complete.body.decompress" = "Extracted to %@";
 "notification.complete.body.default" = "Action finished";
 "notification.undo.body" = "Restored %@";
+"hud.title" = "Finder Overlay Debugger";
+"hud.autocopy" = "Auto copy";
+"hud.copy" = "Copy";
 "menu.section.title" = "SmallLight";
 "menu.listening" = "Listening…";
 "menu.action.label" = "Action: %@";
@@ -17,3 +20,8 @@
 "menu.button.undo" = "Undo Last Action";
 "menu.button.pause" = "Pause Monitoring";
 "menu.button.resume" = "Resume Monitoring";
+"menu.monitoring" = "Enable Monitoring";
+"menu.hide.hud" = "Hide HUD";
+"menu.show.hud" = "Show HUD";
+"menu.focus.hud" = "Focus HUD";
+"menu.quit" = "Quit FinderOverlayDebugger";

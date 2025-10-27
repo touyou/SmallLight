@@ -46,7 +46,8 @@ let package = Package(
             name: "SmallLightTests",
             dependencies: [
                 "SmallLightDomain",
-                "SmallLightServices"
+                "SmallLightServices",
+                "SmallLightAppHost"
             ]
         ),
         .testTarget(

@@ -28,6 +28,7 @@ final class PreferencesStore: PreferencesStoring {
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        migrateLegacyHotKeyIfNeeded()
     }
 
     func observeChanges(_ handler: @escaping () -> Void) -> AnyCancellable {
@@ -73,6 +74,19 @@ final class PreferencesStore: PreferencesStoring {
             defaults.set(newValue.keyCode, forKey: Keys.hotKeyCode)
             defaults.set(newValue.modifiers.rawValue, forKey: Keys.hotKeyModifiers)
             subject.send()
+        }
+    }
+
+    private func migrateLegacyHotKeyIfNeeded() {
+        guard let storedCode = defaults.object(forKey: Keys.hotKeyCode) as? UInt32,
+              let storedModifiers = defaults.object(forKey: Keys.hotKeyModifiers) as? UInt32 else {
+            return
+        }
+
+        let legacyChord = HotKeyChord(keyCode: 49, modifiers: [.option, .shift])
+        if storedCode == legacyChord.keyCode && storedModifiers == legacyChord.modifiers.rawValue {
+            defaults.set(HotKeyChord.defaultActionChord.keyCode, forKey: Keys.hotKeyCode)
+            defaults.set(HotKeyChord.defaultActionChord.modifiers.rawValue, forKey: Keys.hotKeyModifiers)
         }
     }
 }
