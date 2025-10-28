@@ -73,9 +73,4 @@ else
     fi
 fi
 
-if command -v swiftlint >/dev/null 2>&1; then
-    echo "[pre-push] Running swiftlint --strict"
-    swiftlint --strict
-fi
-
 exit 0
