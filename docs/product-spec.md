@@ -1,12 +1,12 @@
 # FinderOverlayDebugger Product Specification
 
 ## Overview
-FinderOverlayDebugger (開発コード: SmallLight) is a resident macOS 13+ utility that brings debugger-style insight to Finder interactions. While a modifier key is held, the app renders a full-screen transparent overlay on every display, tracks the cursor using a lightweight indicator, resolves the underlying Finder item, and presents a HUD showing the resolved path with quick-copy affordances. When the hovered target is a `.zip`, FinderOverlayDebugger optionally unarchives it automatically and logs the outcome.
+FinderOverlayDebugger (開発コード: SmallLight) is a resident macOS 13+ utility that brings debugger-style insight to Finder interactions. A lightweight indicator tracks the cursor at all times; while a modifier key is held, the app switches to listening mode, resolves the underlying Finder item, and presents a HUD showing the resolved path with quick-copy affordances. When the hovered target is a `.zip`, FinderOverlayDebugger optionally unarchives it automatically and logs the outcome.
 
 ## Goals
-- Provide an always-on transparent overlay that does not interfere with normal interaction (click-through, all Spaces).
+- Provide an always-on transparent overlay that does not interfere with normal interaction (click-through, all Spaces) and surfaces idle vs listening cursor states.
 - Detect Finder items under the cursor without clicks, using dwell detection gated by a configurable held key.
-- Resolve absolute file paths reliably and surface them in a right-bottom HUD with copy and history controls.
+- Resolve absolute file paths reliably and surface them in a toggleable HUD (default top-left) with copy and history controls.
 - Offer optional automatic unzip behaviour for ZIP files with user-configurable behaviour.
 - Deliver debugging feedback quickly while preventing duplicate triggers through short-term deduplication.
 
@@ -34,8 +34,8 @@ FinderOverlayDebugger (開発コード: SmallLight) is a resident macOS 13+ util
 
 ### Cursor Tracking & Hover Trigger
 - Install a listen-only CGEventTap for mouse moved / flags changed events.
-- Track current cursor location and modifier flags.
-- Activated when configured held key (`Option` default; configurable) is down.
+- Track current cursor location and modifier flags, updating the indicator in idle (modifier up) and listening (modifier down) states.
+- Dwell processing is activated only when the configured held key (`Option` default; configurable) is down.
 - Dwell detection parameters: `dwell_ms = 200`, `debounce_ms = 80`.
 - Only trigger when the hovered element belongs to Finder UI (`filter = only_on_finder_ui`).
 
@@ -45,7 +45,7 @@ FinderOverlayDebugger (開発コード: SmallLight) is a resident macOS 13+ util
 - Combine directory and filename into an absolute POSIX path.
 
 ### Debug HUD
-- Present a SwiftUI HUD positioned bottom-right.
+- Present a SwiftUI HUD anchored top-left by default and hidden until toggled via menu or hotkey.
 - Shows latest resolved path as monospaced text, includes Copy button and keyboard shortcut (`⌘C`).
 - Maintain history of the last five entries.
 - Configurable automatic copy-to-clipboard.

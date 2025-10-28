@@ -1,12 +1,13 @@
 # SmallLight Operations Guide
 
 ## First-Run Checklist
-- Build the app bundle via `swift build --product SmallLight` or run the `SmallLightAppHost` scheme in Xcode.
+- Clone the repository (`git clone https://github.com/touyou/SmallLight.git`) and build the app bundle via `swift build --product SmallLight` or run the `SmallLightAppHost` scheme in Xcode. App Store 配信は行っていません。
 - Launch the `.app` bundle once so macOS prompts for Accessibility permissions. Approve `SmallLight` under **System Settings → Privacy & Security → Accessibility**.
 - When notifications are required, launch from the app bundle (not `swift run`) and approve the notification prompt.
 
 ## Daily Usage
-- Hold the configured modifier chord (default: Option) and hover Finder items to update the HUD with the resolved absolute path. The HUD keeps the latest five entries and offers a one-click copy plus `⌘C` shortcut when focused.
+- The indicator follows the cursor even without modifiers (idle state). Hold the configured chord (default: Option) to switch to listening mode and resolve Finder items.
+- Resolved paths are appended to the HUD history (latest five entries). Use the Copy button or `⌘C`; enable auto copy in preferences for automatic clipboard updates.
 - When the pointer rests on a `.zip`, FinderOverlayDebugger extracts it with `/usr/bin/ditto` into a sibling directory. Existing folders trigger an `_unpacked`, `_unpacked2`, … suffix so nothing is overwritten.
 - Extraction outcomes are mirrored in the HUD: success messages reference the destination folder, while failures include the ditto error so you can retry.
 - Use the menu bar control or `⌃⌥ Space` to focus the HUD, `⌘⌥ H` to toggle visibility, and `⌃⌥ P` for a manual resolve that bypasses deduplication (helpful when you need to re-run against the same path).

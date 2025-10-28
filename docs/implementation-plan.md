@@ -73,8 +73,8 @@ Delivery follows outside-in, test-guided iterations. Each phase concludes with r
 - Prepare manual QA checklist (permissions, multi-display, zip handling).
 
 ## Deliverables Checklist
-- [ ] Overlay manager renders indicator on every display.
-- [ ] Hover dwell detection triggers HUD updates with accurate paths.
-- [ ] Hotkeys operational (`focus`, `manual resolve`, `toggle HUD`).
-- [ ] ZIP auto-extraction works with dedup/notifications.
-- [ ] Documentation (product spec, operations guide) reflects new workflow.
+- [x] Overlay manager renders indicator on every display (idle/listening states verified on multi-display setups).
+- [x] Hover dwell detection triggers HUD updates with accurate paths while preserving Quartz hit tests for Finder resolution.
+- [x] Hotkeys operational (`focus`, `manual resolve`, `toggle HUD`).
+- [x] ZIP auto-extraction works with dedup/notifications and undo staging.
+- [x] Documentation (product spec, operations guide) reflects current workflow.
