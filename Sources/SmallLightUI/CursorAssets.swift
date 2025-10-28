@@ -24,7 +24,8 @@ public final class CursorAssetLoader: CursorAssetLoading {
         customAssetsDirectory: URL = FileManager.default
             .urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
             .appendingPathComponent("SmallLight/Assets", isDirectory: true)
-            ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library/Application Support/SmallLight/Assets")
+            ?? URL(fileURLWithPath: NSHomeDirectory())
+            .appendingPathComponent("Library/Application Support/SmallLight/Assets")
     ) {
         self.fileManager = fileManager
         self.customAssetsURL = customAssetsDirectory
@@ -45,9 +46,9 @@ public final class CursorAssetLoader: CursorAssetLoading {
         let listeningURL = customAssetsURL.appendingPathComponent("cursor-active.png")
 
         guard fileManager.fileExists(atPath: idleURL.path),
-              fileManager.fileExists(atPath: listeningURL.path),
-              let idle = NSImage(contentsOf: idleURL),
-              let active = NSImage(contentsOf: listeningURL)
+            fileManager.fileExists(atPath: listeningURL.path),
+            let idle = NSImage(contentsOf: idleURL),
+            let active = NSImage(contentsOf: listeningURL)
         else {
             return nil
         }

@@ -1,4 +1,5 @@
 import XCTest
+
 @testable import SmallLightDomain
 @testable import SmallLightServices
 
@@ -61,13 +62,18 @@ final class UndoStagingManagerTests: XCTestCase {
         )
 
         // Stage an item and mark it as old
-        let target = FinderItem(url: tempRoot.appendingPathComponent("Folder", isDirectory: true), isDirectory: true, isArchive: false)
+        let target = FinderItem(
+            url: tempRoot.appendingPathComponent("Folder", isDirectory: true), isDirectory: true,
+            isArchive: false)
         try fileManager.createDirectory(at: target.url, withIntermediateDirectories: true)
         _ = try manager.stagingURL(for: target, action: .compress)
 
-        let allURLs = try XCTUnwrap(fileManager.contentsOfDirectory(at: tempRoot, includingPropertiesForKeys: nil))
+        let allURLs = try XCTUnwrap(
+            fileManager.contentsOfDirectory(at: tempRoot, includingPropertiesForKeys: nil))
         for url in allURLs {
-            try fileManager.setAttributes([.modificationDate: Date(timeIntervalSinceNow: -(retention * 2))], ofItemAtPath: url.path)
+            try fileManager.setAttributes(
+                [.modificationDate: Date(timeIntervalSinceNow: -(retention * 2))],
+                ofItemAtPath: url.path)
         }
 
         currentDate.addTimeInterval(retention * 2)

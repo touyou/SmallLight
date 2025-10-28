@@ -33,8 +33,8 @@ public protocol UndoStagingManaging {
     func updateRetentionInterval(_ interval: TimeInterval)
 }
 
-public extension UndoStagingManaging {
-    func updateRetentionInterval(_ interval: TimeInterval) {}
+extension UndoStagingManaging {
+    public func updateRetentionInterval(_ interval: TimeInterval) {}
 }
 
 public protocol ConfirmationTracking {

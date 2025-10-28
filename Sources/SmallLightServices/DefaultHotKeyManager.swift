@@ -2,7 +2,8 @@ import Foundation
 import SmallLightDomain
 
 public protocol HotKeyRegistrar {
-    func register(chord: HotKeyChord, handler: @escaping (HotKeyEvent) -> Void) throws -> HotKeyRegistrationToken
+    func register(chord: HotKeyChord, handler: @escaping (HotKeyEvent) -> Void) throws
+        -> HotKeyRegistrationToken
 }
 
 public protocol HotKeyRegistrationToken {

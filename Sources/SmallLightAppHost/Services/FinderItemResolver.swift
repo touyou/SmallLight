@@ -19,7 +19,8 @@ enum FinderItemResolverError: Error {
     case baseDirectoryUnavailable
 }
 
-/// Uses Accessibility hit testing and AppleScript fallbacks to map cursor locations to Finder items.
+/// Uses Accessibility hit testing and AppleScript fallbacks to map cursor locations to Finder
+/// items.
 final class FinderItemResolver: FinderItemResolving {
     private let systemWideElement = AXUIElementCreateSystemWide()
     private let baseDirectoryProvider: FinderBaseDirectoryProviding
@@ -71,11 +72,16 @@ final class FinderItemResolver: FinderItemResolving {
     private func resolveURL(from element: AXUIElement) -> URL? {
         var current: AXUIElement? = element
         while let target = current {
-            if let url = attributeValue(for: target, attribute: kAXURLAttribute as CFString) as? URL {
+            let urlValue = attributeValue(for: target, attribute: kAXURLAttribute as CFString)
+            if let url = urlValue as? URL {
                 return url
             }
 
-            if let filename = attributeValue(for: target, attribute: kAXFilenameAttribute as CFString) as? String {
+            let filenameValue = attributeValue(
+                for: target,
+                attribute: kAXFilenameAttribute as CFString
+            )
+            if let filename = filenameValue as? String {
                 if filename.hasPrefix("/") {
                     return URL(fileURLWithPath: filename)
                 } else {
@@ -91,7 +97,8 @@ final class FinderItemResolver: FinderItemResolving {
     private func resolveFilename(from element: AXUIElement) -> String? {
         var current: AXUIElement? = element
         while let target = current {
-            if let name = attributeValue(for: target, attribute: kAXTitleAttribute as CFString) as? String, !name.isEmpty {
+            let nameValue = attributeValue(for: target, attribute: kAXTitleAttribute as CFString)
+            if let name = nameValue as? String, !name.isEmpty {
                 return name
             }
             current = parentElement(of: target)
@@ -113,7 +120,8 @@ final class FinderItemResolver: FinderItemResolving {
     }
 
     private func parentElement(of element: AXUIElement) -> AXUIElement? {
-        guard let value = attributeValue(for: element, attribute: kAXParentAttribute as CFString) else { return nil }
+        guard let value = attributeValue(for: element, attribute: kAXParentAttribute as CFString)
+        else { return nil }
         let cfValue = value as CFTypeRef
         guard CFGetTypeID(cfValue) == AXUIElementGetTypeID() else { return nil }
         return unsafeDowncast(value as AnyObject, to: AXUIElement.self)
@@ -137,9 +145,8 @@ final class FinderItemResolver: FinderItemResolving {
     private func applicationElement(for element: AXUIElement) -> AXUIElement? {
         var current: AXUIElement? = element
         while let target = current {
-            if let role = attributeValue(for: target, attribute: kAXRoleAttribute as CFString) as? String,
-               role == (kAXApplicationRole as String)
-            {
+            let roleValue = attributeValue(for: target, attribute: kAXRoleAttribute as CFString)
+            if let role = roleValue as? String, role == (kAXApplicationRole as String) {
                 return target
             }
             current = parentElement(of: target)

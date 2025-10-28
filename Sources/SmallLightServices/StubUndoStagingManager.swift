@@ -13,6 +13,6 @@ public final class StubUndoStagingManager: UndoStagingManaging {
     }
 
     public func restore(from stagingURL: URL, to destinationURL: URL) throws {
-        // TODO: Implement restore behavior once file operations are in place.
+        // No-op in stub implementation; tests rely on staged state only.
     }
 }

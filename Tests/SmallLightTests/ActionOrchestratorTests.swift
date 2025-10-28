@@ -1,4 +1,5 @@
 import XCTest
+
 @testable import SmallLightDomain
 @testable import SmallLightServices
 
@@ -23,11 +24,12 @@ final class ActionOrchestratorTests: XCTestCase {
     }
 
     func testEvaluatePendingActionReturnsCompressForDirectory() throws {
-        let finder = StubFinderTargetingService(initialItem: FinderItem(
-            url: URL(fileURLWithPath: "/tmp/folder"),
-            isDirectory: true,
-            isArchive: false
-        ))
+        let finder = StubFinderTargetingService(
+            initialItem: FinderItem(
+                url: URL(fileURLWithPath: "/tmp/folder"),
+                isDirectory: true,
+                isArchive: false
+            ))
         let hotKey = InMemoryHotKeyState(isModifierChordActive: true)
         let compression = StubCompressionService()
         let logger = NoopAuditLogger()
@@ -48,11 +50,12 @@ final class ActionOrchestratorTests: XCTestCase {
     }
 
     func testEvaluatePendingActionReturnsDecompressForArchive() throws {
-        let finder = StubFinderTargetingService(initialItem: FinderItem(
-            url: URL(fileURLWithPath: "/tmp/archive.zip"),
-            isDirectory: false,
-            isArchive: true
-        ))
+        let finder = StubFinderTargetingService(
+            initialItem: FinderItem(
+                url: URL(fileURLWithPath: "/tmp/archive.zip"),
+                isDirectory: false,
+                isArchive: true
+            ))
         let hotKey = InMemoryHotKeyState(isModifierChordActive: true)
         let compression = StubCompressionService()
         let logger = NoopAuditLogger()

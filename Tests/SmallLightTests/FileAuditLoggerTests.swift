@@ -1,17 +1,24 @@
 import XCTest
+
 @testable import SmallLightDomain
 @testable import SmallLightServices
 
 final class FileAuditLoggerTests: XCTestCase {
     func testRecordAppendsLineToLog() throws {
         let tempDir = try temporaryDirectory()
-        let logger = FileAuditLogger(baseDirectory: tempDir, fileManager: .default) { Date(timeIntervalSince1970: 0) }
-        let item = FinderItem(url: tempDir.appendingPathComponent("Source"), isDirectory: true, isArchive: false)
+        let logger = FileAuditLogger(baseDirectory: tempDir, fileManager: .default) {
+            Date(timeIntervalSince1970: 0)
+        }
+        let item = FinderItem(
+            url: tempDir.appendingPathComponent("Source"), isDirectory: true, isArchive: false)
 
-        try logger.record(action: .compress, item: item, destination: tempDir.appendingPathComponent("Result.zip"))
+        try logger.record(
+            action: .compress, item: item, destination: tempDir.appendingPathComponent("Result.zip")
+        )
 
         let logURL = tempDir.appendingPathComponent("SmallLight/logs/actions.log")
-        let contents = try String(contentsOf: logURL).trimmingCharacters(in: .whitespacesAndNewlines)
+        let contents = try String(contentsOf: logURL)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
         let data = Data(contents.utf8)
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601

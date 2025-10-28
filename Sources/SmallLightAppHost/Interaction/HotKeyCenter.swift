@@ -40,7 +40,9 @@ final class HotKeyCenter {
     }
 
     func unregisterAll() {
-        registrations.forEach { $0.token.unregister() }
+        for registration in registrations {
+            registration.token.unregister()
+        }
         registrations.removeAll()
     }
 }

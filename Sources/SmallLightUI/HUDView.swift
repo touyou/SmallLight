@@ -25,9 +25,13 @@ public struct HUDView: View {
             }
             HStack(alignment: .center, spacing: 8) {
                 AccessibilityIndicator(isGranted: viewModel.accessibilityGranted)
-                Text(viewModel.accessibilityGranted ? UILocalized.string("hud.accessibility.granted") : UILocalized.string("hud.accessibility.denied"))
-                    .font(.caption)
-                    .foregroundColor(viewModel.accessibilityGranted ? .secondary : .orange)
+                Text(
+                    viewModel.accessibilityGranted
+                        ? UILocalized.string("hud.accessibility.granted")
+                        : UILocalized.string("hud.accessibility.denied")
+                )
+                .font(.caption)
+                .foregroundColor(viewModel.accessibilityGranted ? .secondary : .orange)
             }
 
             if viewModel.history.isEmpty {

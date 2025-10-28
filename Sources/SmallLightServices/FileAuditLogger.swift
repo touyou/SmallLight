@@ -9,12 +9,15 @@ public final class FileAuditLogger: AuditLogging {
     private let queue = DispatchQueue(label: "io.smalllight.audit-logger", qos: .utility)
 
     public init(
-        baseDirectory: URL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-            ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library/Application Support"),
+        baseDirectory: URL = FileManager.default
+            .urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? URL(fileURLWithPath: NSHomeDirectory())
+            .appendingPathComponent("Library/Application Support"),
         fileManager: FileManager = .default,
         dateProvider: @escaping () -> Date = Date.init
     ) {
-        self.directoryURL = baseDirectory.appendingPathComponent("SmallLight/logs", isDirectory: true)
+        self.directoryURL = baseDirectory.appendingPathComponent(
+            "SmallLight/logs", isDirectory: true)
         self.fileManager = fileManager
         self.dateProvider = dateProvider
         self.encoder = JSONEncoder()

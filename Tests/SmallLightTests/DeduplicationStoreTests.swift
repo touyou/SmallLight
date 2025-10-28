@@ -1,4 +1,5 @@
 import XCTest
+
 @testable import SmallLightAppHost
 
 final class DeduplicationStoreTests: XCTestCase {

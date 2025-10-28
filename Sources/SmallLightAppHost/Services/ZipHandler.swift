@@ -12,7 +12,7 @@ enum ZipHandlerError: LocalizedError {
         switch self {
         case .notAZip:
             return "Selected item is not a zip archive."
-        case let .dittoFailed(code, message):
+        case .dittoFailed(let code, let message):
             if message.isEmpty {
                 return "ditto failed with status \(code)."
             }
@@ -45,7 +45,9 @@ final class ZipHandler {
         }
 
         var isDirectory: ObjCBool = false
-        guard fileManager.fileExists(atPath: zipURL.path, isDirectory: &isDirectory), !isDirectory.boolValue else {
+        guard fileManager.fileExists(atPath: zipURL.path, isDirectory: &isDirectory),
+            !isDirectory.boolValue
+        else {
             throw ZipHandlerError.notAZip
         }
 
@@ -91,7 +93,9 @@ final class ZipHandler {
 
         guard process.terminationStatus == 0 else {
             let messageData = errorPipe.fileHandleForReading.readDataToEndOfFile()
-            let message = String(data: messageData, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            let message =
+                String(data: messageData, encoding: .utf8)?
+                .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             try? fileManager.removeItem(at: destinationURL)
             throw ZipHandlerError.dittoFailed(code: process.terminationStatus, message: message)
         }

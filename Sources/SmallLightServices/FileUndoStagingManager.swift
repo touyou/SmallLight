@@ -18,30 +18,38 @@ public final class FileUndoStagingManager: UndoStagingManaging {
         self.fileManager = fileManager
         self.dateProvider = dateProvider
         self.isoFormatter = ISO8601DateFormatter()
-        self.isoFormatter.formatOptions = [.withInternetDateTime, .withDashSeparatorInDate, .withColonSeparatorInTime]
+        self.isoFormatter.formatOptions = [
+            .withInternetDateTime, .withDashSeparatorInDate, .withColonSeparatorInTime,
+        ]
         self.retentionInterval = retentionInterval
     }
 
     public static func defaultRootDirectory() -> URL {
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-        ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library/Application Support")
-        return appSupport
+        let appSupport =
+            FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? URL(fileURLWithPath: NSHomeDirectory())
+            .appendingPathComponent("Library/Application Support")
+        return
+            appSupport
             .appendingPathComponent("SmallLight", isDirectory: true)
             .appendingPathComponent("staging", isDirectory: true)
     }
 
     public func stagingURL(for item: FinderItem, action: SmallLightAction) throws -> URL {
         let timestamp = isoFormatter.string(from: dateProvider())
-        let actionDirectory = rootDirectory
+        let actionDirectory =
+            rootDirectory
             .appendingPathComponent(action.folderName, isDirectory: true)
             .appendingPathComponent(timestamp, isDirectory: true)
         try fileManager.createDirectory(at: actionDirectory, withIntermediateDirectories: true)
         try cleanupExpiredArtifacts()
-        return actionDirectory.appendingPathComponent(item.url.lastPathComponent, isDirectory: item.isDirectory)
+        return actionDirectory.appendingPathComponent(
+            item.url.lastPathComponent, isDirectory: item.isDirectory)
     }
 
     public func stageOriginal(at url: URL) throws -> URL {
-        let originalsDirectory = rootDirectory.appendingPathComponent("originals", isDirectory: true)
+        let originalsDirectory = rootDirectory.appendingPathComponent(
+            "originals", isDirectory: true)
         try fileManager.createDirectory(at: originalsDirectory, withIntermediateDirectories: true)
 
         let uniqueName = "\(UUID().uuidString)-\(url.lastPathComponent)"
@@ -76,8 +84,14 @@ public final class FileUndoStagingManager: UndoStagingManaging {
 
         guard fileManager.fileExists(atPath: rootDirectory.path) else { return removedCount }
 
-        let resourceKeys: Set<URLResourceKey> = [.contentModificationDateKey, .creationDateKey, .isDirectoryKey]
-        guard let enumerator = fileManager.enumerator(at: rootDirectory, includingPropertiesForKeys: Array(resourceKeys), options: [.skipsHiddenFiles]) else {
+        let resourceKeys: Set<URLResourceKey> = [
+            .contentModificationDateKey, .creationDateKey, .isDirectoryKey,
+        ]
+        guard
+            let enumerator = fileManager.enumerator(
+                at: rootDirectory, includingPropertiesForKeys: Array(resourceKeys),
+                options: [.skipsHiddenFiles])
+        else {
             return removedCount
         }
 
@@ -99,8 +113,8 @@ public final class FileUndoStagingManager: UndoStagingManaging {
     }
 }
 
-private extension SmallLightAction {
-    var folderName: String {
+extension SmallLightAction {
+    fileprivate var folderName: String {
         switch self {
         case .compress: "compress"
         case .decompress: "decompress"

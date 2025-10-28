@@ -14,12 +14,15 @@ public final class CarbonHotKeyRegistrar: HotKeyRegistrar {
 
     public init() {}
 
-    public func register(chord: HotKeyChord, handler: @escaping (HotKeyEvent) -> Void) throws -> HotKeyRegistrationToken {
+    public func register(
+        chord: HotKeyChord,
+        handler: @escaping (HotKeyEvent) -> Void
+    ) throws -> HotKeyRegistrationToken {
         unregisterInternal()
 
         self.handler = handler
 
-        let signature: OSType = 0x534C484B // 'SLHK'
+        let signature: OSType = 0x534C_484B  // 'SLHK'
         let hotKeyID = EventHotKeyID(signature: signature, id: UInt32(1))
         var carbonHotKeyRef: EventHotKeyRef?
         let status = RegisterEventHotKey(
@@ -38,8 +41,10 @@ public final class CarbonHotKeyRegistrar: HotKeyRegistrar {
         self.hotKeyRef = hotKeyRef
 
         let eventTypes = [
-            EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed)),
-            EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyReleased)),
+            EventTypeSpec(
+                eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed)),
+            EventTypeSpec(
+                eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyReleased)),
         ]
 
         let statusHandler: OSStatus = eventTypes.withUnsafeBufferPointer { buffer in
@@ -110,8 +115,8 @@ private func carbonHotKeyEventHandler(
     return noErr
 }
 
-private extension HotKeyModifiers {
-    var carbonFlags: UInt32 {
+extension HotKeyModifiers {
+    fileprivate var carbonFlags: UInt32 {
         var flags: UInt32 = 0
         if contains(.command) {
             flags |= UInt32(cmdKey)

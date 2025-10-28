@@ -1,5 +1,6 @@
-@testable import SmallLightAppHost
 import XCTest
+
+@testable import SmallLightAppHost
 
 final class ZipHandlerTests: XCTestCase {
     private var tempDirectory: URL!
@@ -7,7 +8,8 @@ final class ZipHandlerTests: XCTestCase {
 
     override func setUpWithError() throws {
         fileManager = FileManager.default
-        tempDirectory = fileManager.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        tempDirectory = fileManager.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString, isDirectory: true)
         try fileManager.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
     }
 
@@ -22,7 +24,7 @@ final class ZipHandlerTests: XCTestCase {
         let sourceDir = tempDirectory.appendingPathComponent("SampleDir", isDirectory: true)
         try fileManager.createDirectory(at: sourceDir, withIntermediateDirectories: false)
         let filePath = sourceDir.appendingPathComponent("hello.txt")
-        try "hello".data(using: .utf8)?.write(to: filePath)
+        try Data("hello".utf8).write(to: filePath)
 
         let zipURL = tempDirectory.appendingPathComponent("SampleDir.zip")
         try makeZip(from: sourceDir, to: zipURL)
@@ -39,7 +41,7 @@ final class ZipHandlerTests: XCTestCase {
     func testAddsSuffixWhenDestinationConflicts() throws {
         let sourceDir = tempDirectory.appendingPathComponent("Projects", isDirectory: true)
         try fileManager.createDirectory(at: sourceDir, withIntermediateDirectories: false)
-        try "data".data(using: .utf8)?.write(to: sourceDir.appendingPathComponent("file.txt"))
+        try Data("data".utf8).write(to: sourceDir.appendingPathComponent("file.txt"))
 
         let zipURL = tempDirectory.appendingPathComponent("Projects.zip")
         try makeZip(from: sourceDir, to: zipURL)
@@ -58,7 +60,7 @@ final class ZipHandlerTests: XCTestCase {
 
     func testThrowsWhenArchiveInvalid() throws {
         let fakeZip = tempDirectory.appendingPathComponent("Invalid.zip")
-        try "not a zip".data(using: .utf8)?.write(to: fakeZip)
+        try Data("not a zip".utf8).write(to: fakeZip)
 
         let handler = ZipHandler()
         XCTAssertThrowsError(try handler.extract(zipPath: fakeZip.path)) { error in

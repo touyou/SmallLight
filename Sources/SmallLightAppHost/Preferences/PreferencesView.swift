@@ -51,7 +51,10 @@ final class PreferencesViewModel: ObservableObject {
         do {
             try launchAgentManager.setEnabled(launchAtLogin)
         } catch {
-            NSLog("[SmallLight] Failed to update launch-at-login preference: \(error.localizedDescription)")
+            let message =
+                "[SmallLight] Failed to update launch-at-login preference: "
+                + error.localizedDescription
+            NSLog(message)
         }
     }
 
@@ -78,7 +81,8 @@ final class PreferencesViewModel: ObservableObject {
     }
 
     func revealLogs() {
-        let logsURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
+        let logsURL = FileManager.default
+            .urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
             .appendingPathComponent("SmallLight/logs", isDirectory: true)
         guard let logsURL else { return }
         NSWorkspace.shared.activateFileViewerSelecting([logsURL])
@@ -96,18 +100,30 @@ struct SettingsView: View {
         Form {
             Section(LocalizedStringKey("preferences.undo.section")) {
                 VStack(alignment: .leading) {
-                    Slider(value: $viewModel.undoRetentionDays, in: 1 ... 30, step: 1) { Text(LocalizedStringKey("preferences.undo.slider")) }
-                        .onChange(of: viewModel.undoRetentionDays) { _ in viewModel.onUndoRetentionChanged() }
-                    Text(String(format: NSLocalizedString("preferences.undo.caption", bundle: .main, comment: ""), Int(viewModel.undoRetentionDays)))
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    Slider(value: $viewModel.undoRetentionDays, in: 1...30, step: 1) {
+                        Text(LocalizedStringKey("preferences.undo.slider"))
+                    }
+                    .onChange(of: viewModel.undoRetentionDays) { _ in
+                        viewModel.onUndoRetentionChanged()
+                    }
+                    Text(
+                        String(
+                            format: NSLocalizedString(
+                                "preferences.undo.caption", bundle: .main, comment: ""),
+                            Int(viewModel.undoRetentionDays))
+                    )
+                    .font(.caption)
+                    .foregroundColor(.secondary)
                 }
             }
 
             Section(LocalizedStringKey("preferences.appearance.section")) {
                 HStack {
-                    TextField(LocalizedStringKey("preferences.assets.placeholder"), text: $viewModel.assetPath)
-                        .onSubmit { viewModel.onAssetPathChanged() }
+                    TextField(
+                        LocalizedStringKey("preferences.assets.placeholder"),
+                        text: $viewModel.assetPath
+                    )
+                    .onSubmit { viewModel.onAssetPathChanged() }
                     Button(LocalizedStringKey("preferences.assets.choose")) {
                         viewModel.chooseAssetDirectory()
                     }
@@ -128,8 +144,10 @@ struct SettingsView: View {
             }
 
             Section(LocalizedStringKey("preferences.general.section")) {
-                Toggle(LocalizedStringKey("preferences.launch.label"), isOn: $viewModel.launchAtLogin)
-                    .onChange(of: viewModel.launchAtLogin) { _ in viewModel.onLaunchAtLoginChanged() }
+                Toggle(
+                    LocalizedStringKey("preferences.launch.label"), isOn: $viewModel.launchAtLogin
+                )
+                .onChange(of: viewModel.launchAtLogin) { _ in viewModel.onLaunchAtLoginChanged() }
                 Button(LocalizedStringKey("preferences.reveal.logs")) {
                     viewModel.revealLogs()
                 }

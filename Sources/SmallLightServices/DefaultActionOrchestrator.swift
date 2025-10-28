@@ -43,8 +43,10 @@ public final class DefaultActionOrchestrator: ActionOrchestrating {
             action = .none
         }
 
-        let requiresConfirmation = action != .none && confirmationTracker.needsConfirmation(for: item.url)
-        return ActionDecision(item: item, intendedAction: action, requiresConfirmation: requiresConfirmation)
+        let requiresConfirmation =
+            action != .none && confirmationTracker.needsConfirmation(for: item.url)
+        return ActionDecision(
+            item: item, intendedAction: action, requiresConfirmation: requiresConfirmation)
     }
 
     public func perform(decision: ActionDecision) throws -> URL {
@@ -57,7 +59,8 @@ public final class DefaultActionOrchestrator: ActionOrchestrating {
             _ = try undoManager.stagingURL(for: decision.item, action: decision.intendedAction)
             _ = try undoManager.stageOriginal(at: decision.item.url)
             let destinationDirectory = decision.item.url.deletingLastPathComponent()
-            let destination = try compressionService.compress(item: decision.item, destinationDirectory: destinationDirectory)
+            let destination = try compressionService.compress(
+                item: decision.item, destinationDirectory: destinationDirectory)
             confirmationTracker.markConfirmed(for: decision.item.url)
             try auditLogger.record(action: .compress, item: decision.item, destination: destination)
             return destination
@@ -65,9 +68,11 @@ public final class DefaultActionOrchestrator: ActionOrchestrating {
             _ = try undoManager.stagingURL(for: decision.item, action: decision.intendedAction)
             _ = try undoManager.stageOriginal(at: decision.item.url)
             let destinationDirectory = decision.item.url.deletingLastPathComponent()
-            let destination = try compressionService.decompress(item: decision.item, destinationDirectory: destinationDirectory)
+            let destination = try compressionService.decompress(
+                item: decision.item, destinationDirectory: destinationDirectory)
             confirmationTracker.markConfirmed(for: decision.item.url)
-            try auditLogger.record(action: .decompress, item: decision.item, destination: destination)
+            try auditLogger.record(
+                action: .decompress, item: decision.item, destination: destination)
             return destination
         case .none:
             throw SmallLightError.confirmationPending

@@ -1,6 +1,6 @@
 import AppKit
-import SwiftUI
 import SmallLightUI
+import SwiftUI
 
 enum HUDPositioningMode {
     case followCursor
@@ -86,7 +86,8 @@ final class HUDWindowController {
         switch positioningMode {
         case .followCursor:
             let globalPoint = point ?? NSEvent.mouseLocation
-            targetScreen = NSScreen.screens.first { $0.frame.contains(globalPoint) }
+            targetScreen =
+                NSScreen.screens.first { $0.frame.contains(globalPoint) }
                 ?? window.screen
                 ?? NSScreen.main
             guard let screen = targetScreen else { return }

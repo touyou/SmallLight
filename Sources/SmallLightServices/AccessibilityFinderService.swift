@@ -1,5 +1,5 @@
-import ApplicationServices
 import AppKit
+import ApplicationServices
 import Foundation
 import SmallLightDomain
 
@@ -43,19 +43,43 @@ public final class AccessibilityFinderTargetingService: FinderTargetingService {
     }
 
     private func resolveURL(from element: AXUIElement) -> URL? {
-        if let value: CFTypeRef = try? copyAttribute(element: element, attribute: kAXURLAttribute as CFString),
-           CFGetTypeID(value) == CFURLGetTypeID(),
-           let url = value as? URL {
-            return url
+        if let directURL = directURL(from: element) {
+            return directURL
         }
 
-        if let value: CFTypeRef = try? copyAttribute(element: element, attribute: kAXFilenameAttribute as CFString),
-           CFGetTypeID(value) == CFStringGetTypeID(),
-           let path = value as? String {
-            return URL(fileURLWithPath: path)
+        if let filenameURL = filenameURL(from: element) {
+            return filenameURL
         }
 
         return nil
+    }
+
+    private func directURL(from element: AXUIElement) -> URL? {
+        guard
+            let value: CFTypeRef = try? copyAttribute(
+                element: element,
+                attribute: kAXURLAttribute as CFString
+            ),
+            CFGetTypeID(value) == CFURLGetTypeID(),
+            let url = value as? URL
+        else {
+            return nil
+        }
+        return url
+    }
+
+    private func filenameURL(from element: AXUIElement) -> URL? {
+        guard
+            let value: CFTypeRef = try? copyAttribute(
+                element: element,
+                attribute: kAXFilenameAttribute as CFString
+            ),
+            CFGetTypeID(value) == CFStringGetTypeID(),
+            let path = value as? String
+        else {
+            return nil
+        }
+        return URL(fileURLWithPath: path)
     }
 
     private func ascendForURL(from element: AXUIElement) -> URL? {
@@ -66,7 +90,10 @@ public final class AccessibilityFinderTargetingService: FinderTargetingService {
                 return url
             }
 
-            guard let parentValue = try? copyAttribute(element: current, attribute: kAXParentAttribute as CFString) else {
+            guard
+                let parentValue = try? copyAttribute(
+                    element: current, attribute: kAXParentAttribute as CFString)
+            else {
                 return nil
             }
 

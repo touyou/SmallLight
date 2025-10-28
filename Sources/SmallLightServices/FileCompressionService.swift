@@ -48,7 +48,8 @@ public final class FileCompressionService: CompressionService {
         let baseDirectory = destinationDirectory
         try fileManager.createDirectory(at: baseDirectory, withIntermediateDirectories: true)
 
-        let uniqueRootName = "\(item.url.deletingPathExtension().lastPathComponent)-\(UUID().uuidString)"
+        let uniqueRootName =
+            "\(item.url.deletingPathExtension().lastPathComponent)-\(UUID().uuidString)"
         let extractionRoot = baseDirectory.appendingPathComponent(uniqueRootName, isDirectory: true)
 
         if fileManager.fileExists(atPath: extractionRoot.path) {
@@ -109,8 +110,8 @@ public enum ProcessLauncherError: Error {
     case commandFailed(exitCode: Int)
 }
 
-private extension FileManager {
-    func removeItemIfExists(at url: URL) throws {
+extension FileManager {
+    fileprivate func removeItemIfExists(at url: URL) throws {
         if fileExists(atPath: url.path) {
             try removeItem(at: url)
         }

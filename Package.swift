@@ -26,7 +26,7 @@ let package = Package(
             name: "SmallLightUI",
             dependencies: [
                 "SmallLightDomain",
-                "SmallLightServices"
+                "SmallLightServices",
             ],
             resources: [
                 .process("Resources")
@@ -47,7 +47,7 @@ let package = Package(
             dependencies: [
                 "SmallLightDomain",
                 "SmallLightServices",
-                "SmallLightAppHost"
+                "SmallLightAppHost",
             ]
         ),
         .testTarget(
@@ -61,6 +61,6 @@ let package = Package(
             dependencies: [
                 "SmallLightAppHost"
             ]
-        )
+        ),
     ]
 )

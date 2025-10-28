@@ -1,4 +1,5 @@
 import XCTest
+
 @testable import SmallLightDomain
 @testable import SmallLightServices
 
@@ -8,15 +9,17 @@ final class CompressionFlowAcceptanceTests: XCTestCase {
         let folderURL = tempDirectory.appendingPathComponent("SampleFolder", isDirectory: true)
         let archiveURL = tempDirectory.appendingPathComponent("SampleFolder.zip")
 
-        let finder = StubFinderTargetingService(initialItem: FinderItem(
-            url: folderURL,
-            isDirectory: true,
-            isArchive: false
-        ))
+        let finder = StubFinderTargetingService(
+            initialItem: FinderItem(
+                url: folderURL,
+                isDirectory: true,
+                isArchive: false
+            ))
         let hotKeyState = InMemoryHotKeyState(isModifierChordActive: true)
         let compression = RecordingCompressionService(expectedDestination: archiveURL)
         let auditLogger = RecordingAuditLogger()
-        let undoManager = RecordingUndoManager(stagingRoot: tempDirectory.appendingPathComponent("staging"))
+        let undoManager = RecordingUndoManager(
+            stagingRoot: tempDirectory.appendingPathComponent("staging"))
         let confirmationTracker = RecordingConfirmationTracker()
 
         let orchestrator = DefaultActionOrchestrator(
@@ -43,7 +46,9 @@ final class CompressionFlowAcceptanceTests: XCTestCase {
 
         XCTAssertEqual(compression.capturedRequests.count, 1)
         XCTAssertEqual(compression.capturedRequests.first?.source, decision.item)
-        XCTAssertEqual(compression.capturedRequests.first?.destinationDirectory, decision.item.url.deletingLastPathComponent())
+        XCTAssertEqual(
+            compression.capturedRequests.first?.destinationDirectory,
+            decision.item.url.deletingLastPathComponent())
         XCTAssertEqual(undoManager.stageRequests.count, 1)
         XCTAssertEqual(confirmationTracker.markedURLs, [decision.item.url])
     }

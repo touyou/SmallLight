@@ -1,5 +1,6 @@
-@testable import SmallLightUI
 import XCTest
+
+@testable import SmallLightUI
 
 @MainActor
 final class HUDViewModelTests: XCTestCase {

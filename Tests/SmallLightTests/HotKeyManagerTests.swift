@@ -1,4 +1,5 @@
 import XCTest
+
 @testable import SmallLightDomain
 @testable import SmallLightServices
 
@@ -55,7 +56,10 @@ private final class RecordingHotKeyRegistrar: HotKeyRegistrar {
     private(set) var registeredChord: HotKeyChord?
     private(set) var didUnregister = false
 
-    func register(chord: HotKeyChord, handler: @escaping (HotKeyEvent) -> Void) throws -> HotKeyRegistrationToken {
+    func register(
+        chord: HotKeyChord,
+        handler: @escaping (HotKeyEvent) -> Void
+    ) throws -> HotKeyRegistrationToken {
         registeredChord = chord
         self.handler = handler
         return Token { [weak self] in

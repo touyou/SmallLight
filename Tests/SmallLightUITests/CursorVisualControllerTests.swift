@@ -1,6 +1,7 @@
-@testable import SmallLightUI
 import AppKit
 import XCTest
+
+@testable import SmallLightUI
 
 @MainActor
 final class CursorVisualControllerTests: XCTestCase {

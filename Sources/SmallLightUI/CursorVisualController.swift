@@ -12,8 +12,13 @@ public protocol CursorVisualControlling {
 public final class CursorVisualController: CursorVisualControlling {
     private let assetLoader: CursorAssetLoading
     private lazy var assets = assetLoader.loadAssets()
-    private lazy var idleCursor = NSCursor(image: assets.idleImage, hotSpot: NSPoint(x: assets.idleImage.size.width / 2, y: assets.idleImage.size.height / 2))
-    private lazy var listeningCursor = NSCursor(image: assets.listeningImage, hotSpot: NSPoint(x: assets.listeningImage.size.width / 2, y: assets.listeningImage.size.height / 2))
+    private lazy var idleCursor = NSCursor(
+        image: assets.idleImage,
+        hotSpot: NSPoint(x: assets.idleImage.size.width / 2, y: assets.idleImage.size.height / 2))
+    private lazy var listeningCursor = NSCursor(
+        image: assets.listeningImage,
+        hotSpot: NSPoint(
+            x: assets.listeningImage.size.width / 2, y: assets.listeningImage.size.height / 2))
     private var isListening = false
     private var didSetCursor = false
 

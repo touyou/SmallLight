@@ -1,18 +1,19 @@
-@testable import SmallLightAppHost
 import XCTest
+
+@testable import SmallLightAppHost
 
 final class FinderAppleScriptTests: XCTestCase {
     func testBaseDirectoryScriptMatchesTemplate() {
         let expected = """
-        tell application "Finder"
-            if (count of Finder windows) is greater than 0 then
-                set targetPath to POSIX path of (target of front Finder window as alias)
-            else
-                set targetPath to POSIX path of (desktop as alias)
-            end if
-        end tell
-        return targetPath
-        """
+            tell application "Finder"
+                if (count of Finder windows) is greater than 0 then
+                    set targetPath to POSIX path of (target of front Finder window as alias)
+                else
+                    set targetPath to POSIX path of (desktop as alias)
+                end if
+            end tell
+            return targetPath
+            """
         XCTAssertEqual(FinderAppleScript.baseDirectory, expected)
     }
 
@@ -27,7 +28,8 @@ final class FinderAppleScriptTests: XCTestCase {
     }
 
     func testPathBuilderAppendsComponent() {
-        let path = FinderPathBuilder.buildPath(baseDirectory: "/Users/example", itemName: "Documents")
+        let path = FinderPathBuilder.buildPath(
+            baseDirectory: "/Users/example", itemName: "Documents")
         XCTAssertEqual(path, "/Users/example/Documents")
     }
 }

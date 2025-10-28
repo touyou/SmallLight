@@ -25,13 +25,13 @@ struct AppSettings {
 
     /// Behaviour modifiers applied when a zip archive is encountered.
     struct ZipBehaviour {
-        enum Mode {
-            case auto
-            case prompt
-        }
-
-        var behaviour: Mode = .auto
+        var behaviour: ZipMode = .auto
         var destination: ZipDestination = .sameDirectory
+    }
+
+    enum ZipMode {
+        case auto
+        case prompt
     }
 
     enum ZipDestination {
@@ -64,7 +64,16 @@ struct AppSettings {
     var dedup = Dedup()
     /// Zip handling defaults.
     var zip = ZipBehaviour()
-    var focusHotKey: HotKeyChord = HotKeyChord(keyCode: 49, modifiers: [.control, .option]) // Ctrl+Option+Space
-    var manualResolveHotKey: HotKeyChord = HotKeyChord(keyCode: 35, modifiers: [.control, .option]) // Ctrl+Option+P
-    var toggleHUDHotKey: HotKeyChord = HotKeyChord(keyCode: 4, modifiers: [.option, .command]) // Cmd+Option+H
+    var focusHotKey = HotKeyChord(  // Ctrl+Option+Space
+        keyCode: 49,
+        modifiers: [.control, .option]
+    )
+    var manualResolveHotKey = HotKeyChord(  // Ctrl+Option+P
+        keyCode: 35,
+        modifiers: [.control, .option]
+    )
+    var toggleHUDHotKey = HotKeyChord(  // Cmd+Option+H
+        keyCode: 4,
+        modifiers: [.option, .command]
+    )
 }

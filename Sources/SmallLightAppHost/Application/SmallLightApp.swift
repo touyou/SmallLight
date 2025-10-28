@@ -61,7 +61,9 @@ private struct MenuContent: View {
                 Text(UILocalized.string("menu.monitoring"))
             }
             Button(action: coordinator.toggleHUDVisibility) {
-                Text(coordinator.hudVisible ? UILocalized.string("menu.hide.hud") : UILocalized.string("menu.show.hud"))
+                Text(
+                    coordinator.hudVisible
+                        ? UILocalized.string("menu.hide.hud") : UILocalized.string("menu.show.hud"))
             }
             Button(action: coordinator.focusHUD) {
                 Text(UILocalized.string("menu.focus.hud"))

@@ -1,4 +1,5 @@
 import XCTest
+
 @testable import SmallLightDomain
 @testable import SmallLightServices
 

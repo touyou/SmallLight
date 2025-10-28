@@ -12,7 +12,7 @@ swift build
 description = "Run SwiftLint and swift-format in lint mode"
 run = """
 swiftlint --strict
-swift format lint --configuration .swift-format.json .
+swift format lint --configuration .swift-format.json --recursive .
 """
 
 [tasks.test]

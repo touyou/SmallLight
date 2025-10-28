@@ -27,7 +27,10 @@ final class NotificationController: NSObject {
 
     func start() {
         guard Bundle.main.bundleURL.pathExtension == "app" else {
-            NSLog("[SmallLight] Skipping notification setup because executable is not part of an app bundle.")
+            let message =
+                "[SmallLight] Skipping notification setup because executable is "
+                + "not part of an app bundle."
+            NSLog(message)
             return
         }
         let center = UNUserNotificationCenter.current()
@@ -35,13 +38,18 @@ final class NotificationController: NSObject {
         center.delegate = self
         center.requestAuthorization(options: [.alert, .sound]) { granted, error in
             if let error {
-                NSLog("[SmallLight] Notification authorization error: \(error.localizedDescription)")
+                let message =
+                    "[SmallLight] Notification authorization error: "
+                    + error.localizedDescription
+                NSLog(message)
             } else if !granted {
                 NSLog("[SmallLight] Notification authorization not granted")
             }
         }
 
-        let confirmAction = UNNotificationAction(identifier: Identifiers.confirmAction, title: AppStrings.text("notification.action.confirm"), options: [.foreground])
+        let confirmAction = UNNotificationAction(
+            identifier: Identifiers.confirmAction,
+            title: AppStrings.text("notification.action.confirm"), options: [.foreground])
         let confirmationCategory = UNNotificationCategory(
             identifier: Identifiers.confirmationCategory,
             actions: [confirmAction],
@@ -49,7 +57,9 @@ final class NotificationController: NSObject {
             options: []
         )
 
-        let undoAction = UNNotificationAction(identifier: Identifiers.undoAction, title: AppStrings.text("notification.action.undo"), options: [.foreground])
+        let undoAction = UNNotificationAction(
+            identifier: Identifiers.undoAction, title: AppStrings.text("notification.action.undo"),
+            options: [.foreground])
         let completionCategory = UNNotificationCategory(
             identifier: Identifiers.completionCategory,
             actions: [undoAction],
@@ -64,7 +74,9 @@ final class NotificationController: NSObject {
         guard let center = notificationCenter else { return }
         let content = UNMutableNotificationContent()
         content.title = AppStrings.text("notification.confirm.title")
-        let key = decision.intendedAction == .compress ? "notification.confirm.body.compress" : "notification.confirm.body.decompress"
+        let key =
+            decision.intendedAction == .compress
+            ? "notification.confirm.body.compress" : "notification.confirm.body.decompress"
         content.body = AppStrings.formatted(key, decision.item.url.lastPathComponent)
         content.categoryIdentifier = Identifiers.confirmationCategory
         content.userInfo = ["path": decision.item.url.path]
@@ -77,7 +89,10 @@ final class NotificationController: NSObject {
 
         center.add(request) { error in
             if let error {
-                NSLog("[SmallLight] Failed to schedule confirmation notification: \(error.localizedDescription)")
+                let message =
+                    "[SmallLight] Failed to schedule confirmation notification: "
+                    + error.localizedDescription
+                NSLog(message)
             }
         }
     }
@@ -88,9 +103,11 @@ final class NotificationController: NSObject {
         content.title = AppStrings.text("notification.complete.title")
         switch action {
         case .compress:
-            content.body = AppStrings.formatted("notification.complete.body.compress", destination.lastPathComponent)
+            content.body = AppStrings.formatted(
+                "notification.complete.body.compress", destination.lastPathComponent)
         case .decompress:
-            content.body = AppStrings.formatted("notification.complete.body.decompress", destination.lastPathComponent)
+            content.body = AppStrings.formatted(
+                "notification.complete.body.decompress", destination.lastPathComponent)
         case .none:
             content.body = AppStrings.text("notification.complete.body.default")
         }
@@ -107,7 +124,10 @@ final class NotificationController: NSObject {
 
         center.add(request) { error in
             if let error {
-                NSLog("[SmallLight] Failed to schedule completion notification: \(error.localizedDescription)")
+                let message =
+                    "[SmallLight] Failed to schedule completion notification: "
+                    + error.localizedDescription
+                NSLog(message)
             }
         }
     }

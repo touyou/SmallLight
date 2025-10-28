@@ -59,7 +59,8 @@ final class LaunchAgentManager: LaunchAgentManaging {
         let parent = agentURL.deletingLastPathComponent()
         try fileManager.createDirectory(at: parent, withIntermediateDirectories: true)
 
-        let data = try PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0)
+        let data = try PropertyListSerialization.data(
+            fromPropertyList: plist, format: .xml, options: 0)
         fileManager.createFile(atPath: agentURL.path, contents: data)
     }
 

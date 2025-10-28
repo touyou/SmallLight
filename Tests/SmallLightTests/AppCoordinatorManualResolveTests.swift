@@ -1,9 +1,10 @@
-@testable import SmallLightAppHost
 import AppKit
 import SmallLightDomain
 import SmallLightServices
 import SmallLightUI
 import XCTest
+
+@testable import SmallLightAppHost
 
 @MainActor
 final class AppCoordinatorManualResolveTests: XCTestCase {
@@ -11,7 +12,9 @@ final class AppCoordinatorManualResolveTests: XCTestCase {
         let settings = AppSettings()
         let overlay = OverlayStub()
         let hud = HUDStub()
-        let resolver = ResolverStub(result: FinderItemResolution(path: "/tmp/manual.txt", isDirectory: false, isArchive: false))
+        let resolver = ResolverStub(
+            result: FinderItemResolution(
+                path: "/tmp/manual.txt", isDirectory: false, isArchive: false))
         let zip = ZipHandlerStub()
         let compression = StubCompressionService()
         let hotKeys = HotKeyCenterStub()
@@ -46,7 +49,9 @@ final class AppCoordinatorManualResolveTests: XCTestCase {
         wait(for: [overlay.updateExpectation, resolver.expectation], timeout: 1.0)
         waitForHUDHistory(of: coordinator)
 
-        XCTAssertEqual(resolver.callCount, 1, "Manual resolve should invoke resolver even when dedup contains the key")
+        XCTAssertEqual(
+            resolver.callCount, 1,
+            "Manual resolve should invoke resolver even when dedup contains the key")
         XCTAssertEqual(coordinator.hudModel.history.first?.path, "/tmp/manual.txt")
         let expectedMessage = UILocalized.formatted("hud.info.file", "/tmp")
         XCTAssertEqual(coordinator.hudModel.history.first?.message, expectedMessage)
@@ -75,7 +80,9 @@ final class AppCoordinatorManualResolveTests: XCTestCase {
             dedupStore: dedup,
             hoverMonitorFactory: { triggerSettings, dwellHandler, movementHandler, modifier in
                 capturedModifier = modifier
-                return HoverMonitor(settings: triggerSettings, handler: dwellHandler, movementHandler: movementHandler, modifierHandler: modifier)
+                return HoverMonitor(
+                    settings: triggerSettings, handler: dwellHandler,
+                    movementHandler: movementHandler, modifierHandler: modifier)
             },
             hudWindowFactory: { _, _ in hud },
             resolver: resolver,
@@ -87,8 +94,8 @@ final class AppCoordinatorManualResolveTests: XCTestCase {
             cursorController: cursor
         )
 
-    coordinator.start()
-    defer { coordinator.stop() }
+        coordinator.start()
+        defer { coordinator.stop() }
 
         XCTAssertNotNil(capturedModifier)
 
@@ -192,10 +199,16 @@ private final class HotKeyCenterStub: HotKeyRegistering {
 }
 
 private final class AuditLoggerStub: AuditLogging, @unchecked Sendable {
-    private(set) var records: [(SmallLightAction, FinderItem, URL)] = []
+    struct Entry: Equatable {
+        let action: SmallLightAction
+        let item: FinderItem
+        let destination: URL
+    }
+
+    private(set) var records: [Entry] = []
 
     func record(action: SmallLightAction, item: FinderItem, destination: URL) throws {
-        records.append((action, item, destination))
+        records.append(Entry(action: action, item: item, destination: destination))
     }
 }
 

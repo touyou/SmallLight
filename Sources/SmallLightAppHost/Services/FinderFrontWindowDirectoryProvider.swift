@@ -19,15 +19,15 @@ enum AppleScriptError: Error {
 enum FinderAppleScript {
     /// AppleScript that resolves the POSIX path of the front Finder window target or the desktop.
     static let baseDirectory: String = """
-    tell application "Finder"
-        if (count of Finder windows) is greater than 0 then
-            set targetPath to POSIX path of (target of front Finder window as alias)
-        else
-            set targetPath to POSIX path of (desktop as alias)
-        end if
-    end tell
-    return targetPath
-    """
+        tell application "Finder"
+            if (count of Finder windows) is greater than 0 then
+                set targetPath to POSIX path of (target of front Finder window as alias)
+            else
+                set targetPath to POSIX path of (desktop as alias)
+            end if
+        end tell
+        return targetPath
+        """
 }
 
 /// Default executor backed by `NSAppleScript`.
@@ -41,7 +41,8 @@ final class AppleScriptExecutor: AppleScriptExecuting {
         let descriptor = appleScript.executeAndReturnError(&errorDict)
 
         if let errorDict = errorDict as? [String: Any], !errorDict.isEmpty {
-            let message = errorDict[NSAppleScript.errorBriefMessage] as? String
+            let message =
+                errorDict[NSAppleScript.errorBriefMessage] as? String
                 ?? errorDict[NSAppleScript.errorMessage] as? String
                 ?? "Unknown AppleScript error"
             throw AppleScriptError.executionFailed(message: message)

@@ -24,12 +24,13 @@ final class OverlayWindowManager {
         private var isWindowVisible = false
 
         init(screen: NSScreen) {
-            super.init(
-                contentRect: screen.frame,
-                styleMask: .borderless,
-                backing: .buffered,
-                defer: false
-            )
+            super
+                .init(
+                    contentRect: screen.frame,
+                    styleMask: .borderless,
+                    backing: .buffered,
+                    defer: false
+                )
             setFrame(screen.frame, display: false)
             isOpaque = false
             backgroundColor = .clear
@@ -47,7 +48,9 @@ final class OverlayWindowManager {
                 listeningLayer.opacity = 1.0
                 idleLayer.contentsScale = screen.backingScaleFactor
                 listeningLayer.contentsScale = screen.backingScaleFactor
-                let indicatorBounds = CGRect(origin: .zero, size: CGSize(width: indicatorDiameter, height: indicatorDiameter))
+                let indicatorBounds = CGRect(
+                    origin: .zero, size: CGSize(width: indicatorDiameter, height: indicatorDiameter)
+                )
                 let indicatorPath = CGPath(ellipseIn: indicatorBounds, transform: nil)
                 idleLayer.bounds = indicatorBounds
                 idleLayer.path = indicatorPath
@@ -120,7 +123,9 @@ final class OverlayWindowManager {
     }
 
     @objc private func rebuildWindows() {
-        windows.forEach { $0.dismissIndicator() }
+        for window in windows {
+            window.dismissIndicator()
+        }
         windows = NSScreen.screens.map { OverlayWindow(screen: $0) }
         if state != .hidden {
             updateCursorPosition(NSEvent.mouseLocation)
@@ -147,7 +152,9 @@ final class OverlayWindowManager {
     func setIndicatorState(_ state: OverlayIndicatorState) {
         self.state = state
         if state == .hidden {
-            windows.forEach { $0.dismissIndicator() }
+            for window in windows {
+                window.dismissIndicator()
+            }
         } else {
             updateCursorPosition(NSEvent.mouseLocation)
         }

@@ -1,47 +1,57 @@
-@testable import SmallLightAppHost
 import AppKit
 import SmallLightDomain
 import SmallLightServices
 import SmallLightUI
 import XCTest
 
+@testable import SmallLightAppHost
+
 @MainActor
 final class AppCoordinatorZipHandlingTests: XCTestCase {
     func testZipExtractionSuccessRecordsAuditAndHud() {
-        let fixture = makeCoordinator(zipResult: .success(URL(fileURLWithPath: "/tmp/archive_unpacked")))
+        let fixture = makeCoordinator(
+            zipResult: .success(URL(fileURLWithPath: "/tmp/archive_unpacked")))
 
-    fixture.overlay.setIndicatorState(.listening)
+        fixture.overlay.setIndicatorState(.listening)
         fixture.overlay.updateCursorPosition(.zero)
         fixture.instance.manualResolve()
 
-        wait(for: fixture.overlay.updateExpectation, fixture.resolver.expectation, fixture.zipExpectation)
+        wait(
+            for: fixture.overlay.updateExpectation, fixture.resolver.expectation,
+            fixture.zipExpectation)
         waitForHUDHistory(of: fixture.instance)
 
         XCTAssertEqual(fixture.zipHandler.recordedZipPath, "/tmp/archive.zip")
         XCTAssertEqual(fixture.auditLogger.records.first?.action, .decompress)
         XCTAssertEqual(fixture.auditLogger.records.first?.destination.path, "/tmp/archive_unpacked")
         XCTAssertEqual(fixture.instance.hudModel.history.first?.path, "/tmp/archive_unpacked")
-        XCTAssertEqual(fixture.instance.hudModel.history.first?.message, UILocalized.formatted("hud.zip.success", "/tmp/archive_unpacked"))
+        XCTAssertEqual(
+            fixture.instance.hudModel.history.first?.message,
+            UILocalized.formatted("hud.zip.success", "/tmp/archive_unpacked"))
         XCTAssertEqual(fixture.undoManager.stagedOriginals.count, 1)
-    XCTAssertTrue(fixture.overlay.recordedStates.contains(.listening))
+        XCTAssertTrue(fixture.overlay.recordedStates.contains(.listening))
     }
 
     func testZipExtractionFailureClearsDedupAndShowsError() {
         let error = ZipHandlerError.dittoFailed(code: 1, message: "ditto failed")
         let fixture = makeCoordinator(zipResult: .failure(error))
 
-    fixture.overlay.setIndicatorState(.listening)
+        fixture.overlay.setIndicatorState(.listening)
         fixture.overlay.updateCursorPosition(.zero)
         fixture.instance.manualResolve()
 
-        wait(for: fixture.overlay.updateExpectation, fixture.resolver.expectation, fixture.zipExpectation)
+        wait(
+            for: fixture.overlay.updateExpectation, fixture.resolver.expectation,
+            fixture.zipExpectation)
         waitForHUDHistory(of: fixture.instance)
 
         let dedupKey = "/tmp/archive.zip::resolve"
         XCTAssertFalse(fixture.dedup.isDuplicate(dedupKey))
         XCTAssertTrue(fixture.auditLogger.records.isEmpty)
         XCTAssertEqual(fixture.instance.hudModel.history.first?.path, "/tmp/archive.zip")
-        XCTAssertEqual(fixture.instance.hudModel.history.first?.message, UILocalized.formatted("hud.zip.error", "ditto failed"))
+        XCTAssertEqual(
+            fixture.instance.hudModel.history.first?.message,
+            UILocalized.formatted("hud.zip.error", "ditto failed"))
         XCTAssertTrue(fixture.compression.compressRequests.isEmpty)
     }
 
@@ -52,21 +62,26 @@ final class AppCoordinatorZipHandlingTests: XCTestCase {
         let compressionExpectation = expectation(description: "compression invoked")
         fixture.compression.expectation = compressionExpectation
 
-    fixture.overlay.setIndicatorState(.listening)
+        fixture.overlay.setIndicatorState(.listening)
         fixture.overlay.updateCursorPosition(.zero)
         fixture.instance.manualResolve()
 
-        wait(for: fixture.overlay.updateExpectation, fixture.resolver.expectation, compressionExpectation)
+        wait(
+            for: fixture.overlay.updateExpectation, fixture.resolver.expectation,
+            compressionExpectation)
         waitForHUDHistory(of: fixture.instance)
 
         XCTAssertEqual(fixture.compression.compressRequests.count, 1)
         XCTAssertEqual(fixture.compression.compressRequests.first?.item.url.path, "/tmp/folder")
-        XCTAssertEqual(fixture.compression.compressRequests.first?.destinationDirectory.path, "/tmp")
+        XCTAssertEqual(
+            fixture.compression.compressRequests.first?.destinationDirectory.path, "/tmp")
         XCTAssertEqual(fixture.auditLogger.records.first?.action, .compress)
         XCTAssertEqual(fixture.auditLogger.records.first?.destination.path, compressedURL.path)
         XCTAssertEqual(fixture.undoManager.stagedOriginals, [URL(fileURLWithPath: "/tmp/folder")])
         XCTAssertEqual(fixture.instance.hudModel.history.first?.path, compressedURL.path)
-        XCTAssertEqual(fixture.instance.hudModel.history.first?.message, UILocalized.formatted("hud.compress.success", compressedURL.path))
+        XCTAssertEqual(
+            fixture.instance.hudModel.history.first?.message,
+            UILocalized.formatted("hud.compress.success", compressedURL.path))
     }
 
     private func wait(for expectations: XCTestExpectation...) {
@@ -85,7 +100,9 @@ final class AppCoordinatorZipHandlingTests: XCTestCase {
         let settings = AppSettings()
         let overlay = OverlayStub()
         let hud = HUDStub()
-        let resolver = ResolverStub(result: FinderItemResolution(path: "/tmp/archive.zip", isDirectory: false, isArchive: true))
+        let resolver = ResolverStub(
+            result: FinderItemResolution(
+                path: "/tmp/archive.zip", isDirectory: false, isArchive: true))
         let zipHandler = ZipHandlerStub(result: zipResult)
         let hotKeys = HotKeyCenterStub()
         let dedup = DeduplicationStore(ttl: 10, capacity: 8)
@@ -126,14 +143,18 @@ final class AppCoordinatorZipHandlingTests: XCTestCase {
         )
     }
 
-    private func makeCompressionCoordinator(compressResult: Result<URL, Error>) -> CompressionFixture {
+    private func makeCompressionCoordinator(
+        compressResult: Result<URL, Error>
+    ) -> CompressionFixture {
         var settings = AppSettings()
         settings.zip.behaviour = .auto
         let overlay = OverlayStub()
         let hud = HUDStub()
-        let resolver = ResolverStub(result: FinderItemResolution(path: "/tmp/folder", isDirectory: true, isArchive: false))
+        let resolver = ResolverStub(
+            result: FinderItemResolution(path: "/tmp/folder", isDirectory: true, isArchive: false))
         let compression = RecordingCompressionService(result: compressResult)
-        let zipHandler = ZipHandlerStub(result: .success(URL(fileURLWithPath: "/tmp/archive_unpacked")))
+        let zipHandler = ZipHandlerStub(
+            result: .success(URL(fileURLWithPath: "/tmp/archive_unpacked")))
         let hotKeys = HotKeyCenterStub()
         let dedup = DeduplicationStore(ttl: 10, capacity: 8)
         let auditLogger = AuditLoggerStub()
@@ -211,9 +232,9 @@ private final class RecordingCompressionService: CompressionService, @unchecked 
         compressRequests.append(Request(item: item, destinationDirectory: destinationDirectory))
         expectation?.fulfill()
         switch compressResult {
-        case let .success(url):
+        case .success(let url):
             return url
-        case let .failure(error):
+        case .failure(let error):
             throw error
         }
     }
@@ -289,9 +310,9 @@ private final class ZipHandlerStub: ZipHandling, @unchecked Sendable {
         recordedZipPath = zipPath
         expectation.fulfill()
         switch result {
-        case let .success(url):
+        case .success(let url):
             return url
-        case let .failure(error):
+        case .failure(let error):
             throw error
         }
     }
