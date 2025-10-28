@@ -21,6 +21,7 @@ final class OverlayWindowManager {
         private let listeningLayer = CAShapeLayer()
         private var currentState: OverlayIndicatorState = .hidden
         private let indicatorDiameter: CGFloat = 16
+        private var isWindowVisible = false
 
         init(screen: NSScreen) {
             super.init(
@@ -39,6 +40,7 @@ final class OverlayWindowManager {
 
             contentView?.wantsLayer = true
             if let layer = contentView?.layer {
+                layer.contentsScale = screen.backingScaleFactor
                 idleLayer.fillColor = NSColor.systemGray.withAlphaComponent(0.5).cgColor
                 idleLayer.opacity = 1.0
                 listeningLayer.fillColor = NSColor.systemYellow.withAlphaComponent(0.85).cgColor
@@ -60,40 +62,46 @@ final class OverlayWindowManager {
             apply(state: .hidden)
         }
 
-        func updateIndicator(globalPoint point: CGPoint) {
-            guard let contentView else { return }
+        func presentIndicator(state: OverlayIndicatorState, at point: CGPoint) {
+            if currentState != state {
+                apply(state: state)
+            }
+
+            guard state != .hidden, let contentView else {
+                dismissIndicator()
+                return
+            }
+
+            // Convert from global screen space into the window's layer-backed coordinate space.
             let windowPoint = convertPoint(fromScreen: point)
             let converted = contentView.convert(windowPoint, from: nil)
             idleLayer.position = converted
             listeningLayer.position = converted
+            if !isWindowVisible {
+                orderFrontRegardless()
+                isWindowVisible = true
+            }
         }
 
-        func clearIndicator() {
-            idleLayer.isHidden = true
-            listeningLayer.isHidden = true
+        func dismissIndicator() {
+            guard isWindowVisible || currentState != .hidden else { return }
+            apply(state: .hidden)
+            orderOut(nil)
+            isWindowVisible = false
         }
 
         func apply(state: OverlayIndicatorState) {
             currentState = state
             switch state {
             case .hidden:
-                clearIndicator()
+                idleLayer.isHidden = true
+                listeningLayer.isHidden = true
             case .idle:
                 idleLayer.isHidden = false
                 listeningLayer.isHidden = true
-                if idleLayer.path == nil {
-                    let indicatorBounds = CGRect(origin: .zero, size: CGSize(width: indicatorDiameter, height: indicatorDiameter))
-                    idleLayer.bounds = indicatorBounds
-                    idleLayer.path = CGPath(ellipseIn: indicatorBounds, transform: nil)
-                }
             case .listening:
                 idleLayer.isHidden = true
                 listeningLayer.isHidden = false
-                if listeningLayer.path == nil {
-                    let indicatorBounds = CGRect(origin: .zero, size: CGSize(width: indicatorDiameter, height: indicatorDiameter))
-                    listeningLayer.bounds = indicatorBounds
-                    listeningLayer.path = CGPath(ellipseIn: indicatorBounds, transform: nil)
-                }
             }
         }
     }
@@ -112,53 +120,47 @@ final class OverlayWindowManager {
     }
 
     @objc private func rebuildWindows() {
-        windows.forEach { $0.orderOut(nil) }
-        windows = NSScreen.screens.map { screen in
-            let window = OverlayWindow(screen: screen)
-            return window
+        windows.forEach { $0.dismissIndicator() }
+        windows = NSScreen.screens.map { OverlayWindow(screen: $0) }
+        if state != .hidden {
+            updateCursorPosition(NSEvent.mouseLocation)
         }
-        applyVisibility()
     }
 
     func updateCursorPosition(_ point: CGPoint) {
         guard state != .hidden else { return }
+        // Only keep the overlay visible on the display that currently contains the cursor.
         for window in windows {
-            guard let screen = window.screen else { continue }
-            if screen.frame.contains(point) {
-                window.orderFrontRegardless()
-                window.updateIndicator(globalPoint: point)
+            guard let screen = window.screen else {
+                window.dismissIndicator()
+                continue
+            }
+
+            if screenFrame(screen, contains: point) {
+                window.presentIndicator(state: state, at: point)
+            } else {
+                window.dismissIndicator()
             }
         }
     }
 
     func setIndicatorState(_ state: OverlayIndicatorState) {
         self.state = state
-        applyVisibility()
-        if state != .hidden {
+        if state == .hidden {
+            windows.forEach { $0.dismissIndicator() }
+        } else {
             updateCursorPosition(NSEvent.mouseLocation)
         }
     }
 
     func reset() {
-        windows.forEach { $0.clearIndicator() }
         setIndicatorState(.hidden)
     }
 
-    private func applyVisibility() {
-        for window in windows {
-            switch state {
-            case .hidden:
-                window.clearIndicator()
-                window.orderOut(nil)
-                window.apply(state: .hidden)
-            case .idle:
-                window.apply(state: .idle)
-                window.orderFrontRegardless()
-            case .listening:
-                window.apply(state: .listening)
-                window.orderFrontRegardless()
-            }
-        }
+    private func screenFrame(_ screen: NSScreen, contains point: CGPoint) -> Bool {
+        // Expand the frame slightly so edges shared between displays still report true.
+        let expandedFrame = screen.frame.insetBy(dx: -1, dy: -1)
+        return expandedFrame.contains(point)
     }
 }
 

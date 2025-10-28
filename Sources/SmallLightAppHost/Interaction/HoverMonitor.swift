@@ -1,11 +1,15 @@
+import AppKit
 import CoreGraphics
 import Foundation
 
 /// Monitors global hover activity and emits dwell events while the configured modifier chord is held.
 final class HoverMonitor {
     struct Event {
-        let location: CGPoint
+        let displayLocation: CGPoint
+        let hitTestLocation: CGPoint
         let modifiers: CGEventFlags
+
+        var location: CGPoint { displayLocation }
     }
 
     typealias DwellHandler = (Event) -> Void
@@ -91,14 +95,15 @@ final class HoverMonitor {
     private func handle(event: CGEvent, type: CGEventType) {
         let timestamp = event.timestampSeconds
         let flags = event.normalizedFlags
-        let location = event.location
+        let displayLocation = event.appKitLocation
+        let hitTestLocation = event.location
 
         let isHeld = flags.containsAll(stateMachine.requiredFlags)
         notifyModifierIfNeeded(isHeld: isHeld)
         if type == .mouseMoved {
             if let movementHandler {
                 Task { @MainActor in
-                    movementHandler(Event(location: location, modifiers: flags))
+                    movementHandler(Event(displayLocation: displayLocation, hitTestLocation: hitTestLocation, modifiers: flags))
                 }
             }
         }
@@ -108,7 +113,8 @@ final class HoverMonitor {
             switch type {
             case .mouseMoved:
                 let action = self.stateMachine.handleMouseMove(
-                    location: location,
+                    displayLocation: displayLocation,
+                    hitTestLocation: hitTestLocation,
                     flags: flags,
                     timestamp: timestamp
                 )
@@ -155,7 +161,11 @@ final class HoverMonitor {
     private func dwellTimerFired() {
         let timestamp = ProcessInfo.processInfo.systemUptime
         if let result = stateMachine.handleDwellTimer(timestamp: timestamp) {
-            let event = Event(location: result.location, modifiers: result.modifiers)
+            let event = Event(
+                displayLocation: result.displayLocation,
+                hitTestLocation: result.hitTestLocation,
+                modifiers: result.modifiers
+            )
             dwellHandler(event)
         } else {
             // Timer fired but state machine not ready; keep waiting if still armed.
@@ -186,7 +196,8 @@ struct HoverStateMachine {
     let requiredFlags: CGEventFlags
     private let movementTolerance: CGFloat
 
-    private(set) var lastLocation: CGPoint?
+    private(set) var lastDisplayLocation: CGPoint?
+    private(set) var lastHitTestLocation: CGPoint?
     private(set) var lastMovementTime: TimeInterval?
     private(set) var currentFlags: CGEventFlags = []
     private var lastTriggerTime: TimeInterval?
@@ -205,10 +216,11 @@ struct HoverStateMachine {
         self.movementTolerance = movementTolerance
     }
 
-    mutating func handleMouseMove(location: CGPoint, flags: CGEventFlags, timestamp: TimeInterval) -> Action {
+    mutating func handleMouseMove(displayLocation: CGPoint, hitTestLocation: CGPoint, flags: CGEventFlags, timestamp: TimeInterval) -> Action {
         let filteredFlags = flags.filtered
-        let previousLocation = lastLocation
-        lastLocation = location
+        let previousLocation = lastDisplayLocation
+        lastDisplayLocation = displayLocation
+        lastHitTestLocation = hitTestLocation
         lastMovementTime = timestamp
         currentFlags = filteredFlags
         isHeld = filteredFlags.containsAll(requiredFlags)
@@ -218,7 +230,7 @@ struct HoverStateMachine {
             return .cancelDwell
         }
 
-        if dwellArmed, let previousLocation, previousLocation.distance(to: location) <= movementTolerance {
+        if dwellArmed, let previousLocation, previousLocation.distance(to: displayLocation) <= movementTolerance {
             return .none
         }
 
@@ -238,7 +250,7 @@ struct HoverStateMachine {
 
         lastMovementTime = timestamp
 
-        if lastLocation != nil, !dwellArmed {
+        if lastDisplayLocation != nil, !dwellArmed {
             dwellArmed = true
             return .startDwell
         }
@@ -246,8 +258,8 @@ struct HoverStateMachine {
         return .none
     }
 
-    mutating func handleDwellTimer(timestamp: TimeInterval) -> (location: CGPoint, modifiers: CGEventFlags)? {
-        guard dwellArmed, isHeld, let lastMovementTime, let location = lastLocation else {
+    mutating func handleDwellTimer(timestamp: TimeInterval) -> (displayLocation: CGPoint, hitTestLocation: CGPoint, modifiers: CGEventFlags)? {
+        guard dwellArmed, isHeld, let lastMovementTime, let displayLocation = lastDisplayLocation, let hitTestLocation = lastHitTestLocation else {
             dwellArmed = false
             return nil
         }
@@ -262,7 +274,7 @@ struct HoverStateMachine {
 
         dwellArmed = false
         lastTriggerTime = timestamp
-        return (location, currentFlags)
+        return (displayLocation, hitTestLocation, currentFlags)
     }
 
     var dwellIsActive: Bool {
@@ -285,6 +297,13 @@ private extension CGEvent {
 
     var normalizedFlags: CGEventFlags {
         flags.filtered
+    }
+
+    var appKitLocation: CGPoint {
+        if let appKitEvent = NSEvent(cgEvent: self) {
+            return appKitEvent.locationInWindow
+        }
+        return NSEvent.mouseLocation
     }
 }
 

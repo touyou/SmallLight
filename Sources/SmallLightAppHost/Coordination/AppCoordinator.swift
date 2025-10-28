@@ -49,7 +49,7 @@ final class AppCoordinator: ObservableObject {
         },
         { [weak self] event in
             guard let self else { return }
-            self.overlayManager.updateCursorPosition(event.location)
+            self.overlayManager.updateCursorPosition(event.displayLocation)
         },
         { [weak self] isHeld in
             guard let self else { return }
@@ -106,10 +106,11 @@ final class AppCoordinator: ObservableObject {
     func start() {
         guard mode == .idle else { return }
         hoverMonitor.start()
-    overlayManager.setIndicatorState(.idle)
+        overlayManager.setIndicatorState(.idle)
         cursorController.update(listening: false)
-        hudWindowController.show()
-        hudVisible = true
+        hudWindowController.setPositioningMode(.fixedTopLeft)
+        hudWindowController.hide()
+        hudVisible = false
         mode = .watching
         registerHotKeys()
         verifyAccessibilityPermissions()
@@ -120,6 +121,7 @@ final class AppCoordinator: ObservableObject {
         hoverMonitor.stop()
         overlayManager.setIndicatorState(.hidden)
         cursorController.reset()
+        hudWindowController.hide()
         hotKeyCenter.unregisterAll()
         mode = .idle
     }
@@ -148,9 +150,8 @@ final class AppCoordinator: ObservableObject {
     }
 
     private func handleHoverEvent(_ event: HoverMonitor.Event) {
-        hudWindowController.updatePosition(nearestTo: event.location)
-        overlayManager.updateCursorPosition(event.location)
-        resolve(at: event.location, bypassDedup: false)
+        overlayManager.updateCursorPosition(event.displayLocation)
+        resolve(at: event.hitTestLocation, bypassDedup: false)
     }
 
     private func copyToClipboard(_ entry: HUDEntry) {
@@ -295,10 +296,10 @@ final class AppCoordinator: ObservableObject {
     }
 
     func manualResolve() {
-        let location = NSEvent.mouseLocation
-        hudWindowController.updatePosition(nearestTo: location)
-        overlayManager.updateCursorPosition(location)
-        resolve(at: location, bypassDedup: true)
+        let displayLocation = NSEvent.mouseLocation
+        let hitTestLocation = CGEvent(source: nil)?.location ?? displayLocation
+        overlayManager.updateCursorPosition(displayLocation)
+        resolve(at: hitTestLocation, bypassDedup: true)
     }
 
     /// Opens Finder pointing at the undo staging directory so users can inspect or restore staged originals manually.

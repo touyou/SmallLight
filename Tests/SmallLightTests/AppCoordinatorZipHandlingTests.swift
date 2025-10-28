@@ -258,6 +258,8 @@ private final class HUDStub: HUDWindowControlling {
     }
 
     func updatePosition(nearestTo point: CGPoint?) {}
+
+    func setPositioningMode(_ mode: HUDPositioningMode) {}
 }
 
 private final class ResolverStub: FinderItemResolving, @unchecked Sendable {

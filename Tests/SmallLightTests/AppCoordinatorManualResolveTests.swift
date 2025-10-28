@@ -53,6 +53,54 @@ final class AppCoordinatorManualResolveTests: XCTestCase {
         XCTAssertTrue(overlay.receivedUpdate, "Manual resolve should update overlay position")
     }
 
+    func testModifierToggleUpdatesOverlayAndCursorStates() {
+        let settings = AppSettings()
+        let overlay = OverlayStub()
+        let hud = HUDStub()
+        let resolver = ResolverStub(result: nil)
+        let zip = ZipHandlerStub()
+        let compression = StubCompressionService()
+        let hotKeys = HotKeyCenterStub()
+        let dedup = DeduplicationStore(ttl: 10, capacity: 8)
+        let auditLogger = AuditLoggerStub()
+        let undoManager = UndoManagerStub()
+        let cursor = CursorControllerStub()
+
+        var capturedModifier: HoverMonitor.ModifierHandler?
+
+        let coordinator = AppCoordinator(
+            settings: settings,
+            overlayManager: overlay,
+            pasteboard: .general,
+            dedupStore: dedup,
+            hoverMonitorFactory: { triggerSettings, dwellHandler, movementHandler, modifier in
+                capturedModifier = modifier
+                return HoverMonitor(settings: triggerSettings, handler: dwellHandler, movementHandler: movementHandler, modifierHandler: modifier)
+            },
+            hudWindowFactory: { _, _ in hud },
+            resolver: resolver,
+            compressionService: compression,
+            zipHandler: zip,
+            hotKeyCenter: hotKeys,
+            auditLogger: auditLogger,
+            undoManager: undoManager,
+            cursorController: cursor
+        )
+
+    coordinator.start()
+    defer { coordinator.stop() }
+
+        XCTAssertNotNil(capturedModifier)
+
+        capturedModifier?(true)
+        capturedModifier?(false)
+
+        XCTAssertEqual(overlay.recordedStates, [.idle, .listening, .idle])
+        XCTAssertEqual(cursor.listeningStates, [false, true, false])
+        XCTAssertFalse(hud.isVisible)
+        XCTAssertFalse(coordinator.hudVisible)
+    }
+
     private func waitForHUDHistory(of coordinator: AppCoordinator) {
         let expectation = expectation(description: "hud history updated")
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -101,6 +149,8 @@ private final class HUDStub: HUDWindowControlling {
     }
 
     func updatePosition(nearestTo point: CGPoint?) {}
+
+    func setPositioningMode(_ mode: HUDPositioningMode) {}
 }
 
 private final class ResolverStub: FinderItemResolving, @unchecked Sendable {

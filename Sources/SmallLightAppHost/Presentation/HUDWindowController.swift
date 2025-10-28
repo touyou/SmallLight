@@ -2,6 +2,11 @@ import AppKit
 import SwiftUI
 import SmallLightUI
 
+enum HUDPositioningMode {
+    case followCursor
+    case fixedTopLeft
+}
+
 @MainActor
 protocol HUDWindowControlling: AnyObject {
     var isVisible: Bool { get }
@@ -9,6 +14,7 @@ protocol HUDWindowControlling: AnyObject {
     func hide()
     func focus()
     func updatePosition(nearestTo point: CGPoint?)
+    func setPositioningMode(_ mode: HUDPositioningMode)
 }
 
 /// Manages the floating HUD window that displays resolved Finder paths.
@@ -18,6 +24,7 @@ final class HUDWindowController {
     private let hostingController: NSHostingController<HUDView>
     private let minimumSize = CGSize(width: 600, height: 360)
     private let edgeInsets = NSEdgeInsets(top: 48, left: 32, bottom: 48, right: 32)
+    private var positioningMode: HUDPositioningMode = .followCursor
 
     init(viewModel: HUDViewModel, copyHandler: @escaping (HUDEntry) -> Void) {
         let hudView = HUDView(viewModel: viewModel, copyHandler: copyHandler)
@@ -75,27 +82,43 @@ final class HUDWindowController {
         )
         window.setContentSize(desiredSize)
 
-        let globalPoint = point ?? NSEvent.mouseLocation
-        let targetScreen = NSScreen.screens.first { $0.frame.contains(globalPoint) }
-            ?? window.screen
-            ?? NSScreen.main
+        let targetScreen: NSScreen?
+        switch positioningMode {
+        case .followCursor:
+            let globalPoint = point ?? NSEvent.mouseLocation
+            targetScreen = NSScreen.screens.first { $0.frame.contains(globalPoint) }
+                ?? window.screen
+                ?? NSScreen.main
+            guard let screen = targetScreen else { return }
 
-        guard let screen = targetScreen else { return }
+            var frame = window.frameRect(forContentRect: NSRect(origin: .zero, size: desiredSize))
+            let visible = screen.visibleFrame
 
-        var frame = window.frameRect(forContentRect: NSRect(origin: .zero, size: desiredSize))
-        let visible = screen.visibleFrame
+            let minX = visible.minX + edgeInsets.left
+            let maxX = visible.maxX - edgeInsets.right - frame.width
+            let centeredX = globalPoint.x - frame.width / 2
+            frame.origin.x = min(max(centeredX, minX), maxX)
 
-        let minX = visible.minX + edgeInsets.left
-        let maxX = visible.maxX - edgeInsets.right - frame.width
-        let centeredX = globalPoint.x - frame.width / 2
-        frame.origin.x = min(max(centeredX, minX), maxX)
+            let minY = visible.minY + edgeInsets.bottom
+            let maxY = visible.maxY - edgeInsets.top - frame.height
+            let centeredY = globalPoint.y - frame.height / 2
+            frame.origin.y = min(max(centeredY, minY), maxY)
 
-        let minY = visible.minY + edgeInsets.bottom
-        let maxY = visible.maxY - edgeInsets.top - frame.height
-        let centeredY = globalPoint.y - frame.height / 2
-        frame.origin.y = min(max(centeredY, minY), maxY)
+            window.setFrame(frame, display: false)
+        case .fixedTopLeft:
+            let screen = window.screen ?? NSScreen.main ?? NSScreen.screens.first
+            guard let screen else { return }
+            var frame = window.frameRect(forContentRect: NSRect(origin: .zero, size: desiredSize))
+            let visible = screen.visibleFrame
+            frame.origin.x = visible.minX + edgeInsets.left
+            frame.origin.y = visible.maxY - edgeInsets.top - frame.height
+            window.setFrame(frame, display: false)
+        }
+    }
 
-        window.setFrame(frame, display: false)
+    func setPositioningMode(_ mode: HUDPositioningMode) {
+        positioningMode = mode
+        updatePosition(nearestTo: nil)
     }
 }
 
