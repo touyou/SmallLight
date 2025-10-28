@@ -28,7 +28,7 @@ jobs:
         run: swiftlint --strict
 
       - name: Format Check
-        run: swift format lint --configuration .swift-format.json .
+        run: swift format lint --configuration .swift-format.json --recursive .
 
       - name: Swift Build
         run: swift build
