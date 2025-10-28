@@ -8,6 +8,7 @@ protocol HUDWindowControlling: AnyObject {
     func show()
     func hide()
     func focus()
+    func updatePosition(nearestTo point: CGPoint?)
 }
 
 /// Manages the floating HUD window that displays resolved Finder paths.
@@ -15,12 +16,14 @@ protocol HUDWindowControlling: AnyObject {
 final class HUDWindowController {
     private let window: NSWindow
     private let hostingController: NSHostingController<HUDView>
+    private let minimumSize = CGSize(width: 600, height: 360)
+    private let edgeInsets = NSEdgeInsets(top: 48, left: 32, bottom: 48, right: 32)
 
     init(viewModel: HUDViewModel, copyHandler: @escaping (HUDEntry) -> Void) {
         let hudView = HUDView(viewModel: viewModel, copyHandler: copyHandler)
         hostingController = NSHostingController(rootView: hudView)
         window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 480, height: 220),
+            contentRect: NSRect(origin: .zero, size: minimumSize),
             styleMask: [.borderless],
             backing: .buffered,
             defer: false
@@ -33,10 +36,11 @@ final class HUDWindowController {
         window.ignoresMouseEvents = false
         window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         window.contentViewController = hostingController
-        positionWindow()
+        updatePosition(nearestTo: NSEvent.mouseLocation)
     }
 
     func show() {
+        updatePosition(nearestTo: NSEvent.mouseLocation)
         window.orderFrontRegardless()
     }
 
@@ -57,20 +61,41 @@ final class HUDWindowController {
     }
 
     func focus() {
+        updatePosition(nearestTo: NSEvent.mouseLocation)
         show()
         NSApp.activate(ignoringOtherApps: true)
         window.makeKey()
     }
 
-    private func positionWindow() {
-        guard let screen = NSScreen.main else { return }
-        let margin: CGFloat = 20
-        let size = window.frame.size
-        let origin = CGPoint(
-            x: screen.visibleFrame.maxX - size.width - margin,
-            y: screen.visibleFrame.minY + margin
+    func updatePosition(nearestTo point: CGPoint?) {
+        hostingController.view.layoutSubtreeIfNeeded()
+        let desiredSize = CGSize(
+            width: max(hostingController.view.fittingSize.width, minimumSize.width),
+            height: max(hostingController.view.fittingSize.height, minimumSize.height)
         )
-        window.setFrameOrigin(origin)
+        window.setContentSize(desiredSize)
+
+        let globalPoint = point ?? NSEvent.mouseLocation
+        let targetScreen = NSScreen.screens.first { $0.frame.contains(globalPoint) }
+            ?? window.screen
+            ?? NSScreen.main
+
+        guard let screen = targetScreen else { return }
+
+        var frame = window.frameRect(forContentRect: NSRect(origin: .zero, size: desiredSize))
+        let visible = screen.visibleFrame
+
+        let minX = visible.minX + edgeInsets.left
+        let maxX = visible.maxX - edgeInsets.right - frame.width
+        let centeredX = globalPoint.x - frame.width / 2
+        frame.origin.x = min(max(centeredX, minX), maxX)
+
+        let minY = visible.minY + edgeInsets.bottom
+        let maxY = visible.maxY - edgeInsets.top - frame.height
+        let centeredY = globalPoint.y - frame.height / 2
+        frame.origin.y = min(max(centeredY, minY), maxY)
+
+        window.setFrame(frame, display: false)
     }
 }
 

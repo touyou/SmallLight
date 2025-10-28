@@ -8,9 +8,13 @@ final class HoverMonitor {
         let modifiers: CGEventFlags
     }
 
-    typealias Handler = (Event) -> Void
+    typealias DwellHandler = (Event) -> Void
+    typealias MovementHandler = (Event) -> Void
+    typealias ModifierHandler = (Bool) -> Void
 
-    private let handler: Handler
+    private let dwellHandler: DwellHandler
+    private let movementHandler: MovementHandler?
+    private let modifierHandler: ModifierHandler?
     private let dwellThreshold: TimeInterval
     private let debounceInterval: TimeInterval
     private let processingQueue = DispatchQueue(label: "io.smalllight.hover-monitor", qos: .userInteractive)
@@ -20,8 +24,17 @@ final class HoverMonitor {
     private var runLoopSource: CFRunLoopSource?
     private var dwellTimer: DispatchSourceTimer?
 
-    init(settings: AppSettings.Trigger, handler: @escaping Handler) {
-        self.handler = handler
+    private var lastModifierState: Bool = false
+
+    init(
+        settings: AppSettings.Trigger,
+        handler: @escaping DwellHandler,
+        movementHandler: MovementHandler? = nil,
+        modifierHandler: ModifierHandler? = nil
+    ) {
+        dwellHandler = handler
+        self.movementHandler = movementHandler
+        self.modifierHandler = modifierHandler
         dwellThreshold = settings.dwellThreshold
         debounceInterval = settings.debounceInterval
         stateMachine = HoverStateMachine(
@@ -80,6 +93,16 @@ final class HoverMonitor {
         let flags = event.normalizedFlags
         let location = event.location
 
+        let isHeld = flags.containsAll(stateMachine.requiredFlags)
+        notifyModifierIfNeeded(isHeld: isHeld)
+        if type == .mouseMoved, isHeld {
+            if let movementHandler {
+                Task { @MainActor in
+                    movementHandler(Event(location: location, modifiers: flags))
+                }
+            }
+        }
+
         processingQueue.async { [weak self] in
             guard let self else { return }
             switch type {
@@ -133,12 +156,20 @@ final class HoverMonitor {
         let timestamp = ProcessInfo.processInfo.systemUptime
         if let result = stateMachine.handleDwellTimer(timestamp: timestamp) {
             let event = Event(location: result.location, modifiers: result.modifiers)
-            handler(event)
+            dwellHandler(event)
         } else {
             // Timer fired but state machine not ready; keep waiting if still armed.
             if stateMachine.dwellIsActive {
                 scheduleDwellTimer()
             }
+        }
+    }
+
+    private func notifyModifierIfNeeded(isHeld: Bool) {
+        guard let modifierHandler, isHeld != lastModifierState else { return }
+        lastModifierState = isHeld
+        Task { @MainActor in
+            modifierHandler(isHeld)
         }
     }
 }
@@ -152,7 +183,7 @@ struct HoverStateMachine {
 
     private let dwellThreshold: TimeInterval
     private let debounceInterval: TimeInterval
-    private let requiredFlags: CGEventFlags
+    let requiredFlags: CGEventFlags
     private let movementTolerance: CGFloat
 
     private(set) var lastLocation: CGPoint?

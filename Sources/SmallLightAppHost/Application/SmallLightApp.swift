@@ -13,12 +13,19 @@ struct SmallLightApp: App {
             settings: settings,
             overlayManager: OverlayWindowManager(),
             pasteboard: .general,
-            dedupStore: nil,
-            hoverMonitorFactory: HoverMonitor.init,
+            hoverMonitorFactory: { trigger, dwell, movement, modifier in
+                HoverMonitor(
+                    settings: trigger,
+                    handler: dwell,
+                    movementHandler: movement,
+                    modifierHandler: modifier
+                )
+            },
             hudWindowFactory: { viewModel, copyHandler in
                 HUDWindowController(viewModel: viewModel, copyHandler: copyHandler)
             },
             resolver: FinderItemResolver(),
+            compressionService: FileCompressionService(),
             zipHandler: ZipHandler(),
             hotKeyCenter: HotKeyCenter(),
             auditLogger: FileAuditLogger(),
@@ -33,6 +40,15 @@ struct SmallLightApp: App {
             MenuContent(coordinator: coordinator)
         }
         .menuBarExtraStyle(.window)
+
+        Settings {
+            SettingsView(
+                viewModel: PreferencesViewModel(
+                    store: PreferencesStore.shared,
+                    launchAgentManager: LaunchAgentManager()
+                )
+            )
+        }
     }
 }
 
@@ -56,6 +72,11 @@ private struct MenuContent: View {
             }
             Button(action: coordinator.revealAuditLog) {
                 Text(UILocalized.string("menu.reveal.logs"))
+            }
+            Button {
+                NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
+            } label: {
+                Text(UILocalized.string("menu.open.preferences"))
             }
             Divider()
             Button {

@@ -3,6 +3,7 @@ import AppKit
 @MainActor
 protocol OverlayUpdating {
     func updateCursorPosition(_ point: CGPoint)
+    func setActive(_ isActive: Bool)
 }
 
 /// Draws circular cursor indicators on transparent windows across all displays.
@@ -37,9 +38,14 @@ final class OverlayWindowManager {
             let rect = CGRect(x: point.x - diameter / 2, y: point.y - diameter / 2, width: diameter, height: diameter)
             indicatorLayer.path = CGPath(ellipseIn: rect, transform: nil)
         }
+
+        func clearIndicator() {
+            indicatorLayer.path = nil
+        }
     }
 
     private var windows: [OverlayWindow] = []
+    private var isActive: Bool = false
 
     init() {
         rebuildWindows()
@@ -55,12 +61,13 @@ final class OverlayWindowManager {
         windows.forEach { $0.orderOut(nil) }
         windows = NSScreen.screens.map { screen in
             let window = OverlayWindow(screen: screen)
-            window.orderFrontRegardless()
             return window
         }
+        applyVisibility()
     }
 
     func updateCursorPosition(_ point: CGPoint) {
+        guard isActive else { return }
         for window in windows {
             guard let screen = window.screen else { continue }
             if screen.frame.contains(point) {
@@ -70,6 +77,25 @@ final class OverlayWindowManager {
                     y: point.y - screen.frame.origin.y
                 )
                 window.updateIndicator(to: localPoint)
+            }
+        }
+    }
+
+    func setActive(_ isActive: Bool) {
+        self.isActive = isActive
+        applyVisibility()
+        if isActive {
+            updateCursorPosition(NSEvent.mouseLocation)
+        }
+    }
+
+    private func applyVisibility() {
+        for window in windows {
+            if isActive {
+                window.orderFrontRegardless()
+            } else {
+                window.clearIndicator()
+                window.orderOut(nil)
             }
         }
     }

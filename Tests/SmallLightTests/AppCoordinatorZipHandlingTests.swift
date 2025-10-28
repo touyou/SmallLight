@@ -8,82 +8,69 @@ import XCTest
 @MainActor
 final class AppCoordinatorZipHandlingTests: XCTestCase {
     func testZipExtractionSuccessRecordsAuditAndHud() {
-        let settings = AppSettings()
-        let overlay = OverlayStub()
-        let hud = HUDStub()
-        let resolver = ResolverStub(result: FinderItemResolution(path: "/tmp/archive.zip", isDirectory: false, isArchive: true))
-        let zipHandler = ZipHandlerStubSuccess(destination: URL(fileURLWithPath: "/tmp/archive_unpacked"))
-        let hotKeys = HotKeyCenterStub()
-        let dedup = DeduplicationStore(ttl: 10, capacity: 8)
-        let auditLogger = AuditLoggerStub()
-        let undoManager = UndoManagerStub()
+        let fixture = makeCoordinator(zipResult: .success(URL(fileURLWithPath: "/tmp/archive_unpacked")))
 
-        let coordinator = AppCoordinator(
-            settings: settings,
-            overlayManager: overlay,
-            pasteboard: .general,
-            dedupStore: dedup,
-            hoverMonitorFactory: { triggerSettings, handler in
-                HoverMonitor(settings: triggerSettings, handler: handler)
-            },
-            hudWindowFactory: { _, _ in hud },
-            resolver: resolver,
-            zipHandler: zipHandler,
-            hotKeyCenter: hotKeys,
-            auditLogger: auditLogger,
-            undoManager: undoManager
-        )
+        fixture.overlay.setActive(true)
+        fixture.overlay.updateCursorPosition(.zero)
+        fixture.instance.manualResolve()
 
-        coordinator.manualResolve()
+        wait(for: fixture.overlay.updateExpectation, fixture.resolver.expectation, fixture.zipExpectation)
+        waitForHUDHistory(of: fixture.instance)
 
-        wait(for: [overlay.updateExpectation, resolver.expectation, zipHandler.expectation], timeout: 1.0)
-        waitForHUDHistory(of: coordinator)
-
-        XCTAssertEqual(zipHandler.recordedZipPath, "/tmp/archive.zip")
-        XCTAssertEqual(auditLogger.records.first?.action, .decompress)
-        XCTAssertEqual(auditLogger.records.first?.destination.path, "/tmp/archive_unpacked")
-        XCTAssertEqual(coordinator.hudModel.history.first?.path, "/tmp/archive_unpacked")
-        XCTAssertEqual(coordinator.hudModel.history.first?.message, UILocalized.formatted("hud.zip.success", "/tmp/archive_unpacked"))
-        XCTAssertEqual(undoManager.stagedOriginals.count, 1)
+        XCTAssertEqual(fixture.zipHandler.recordedZipPath, "/tmp/archive.zip")
+        XCTAssertEqual(fixture.auditLogger.records.first?.action, .decompress)
+        XCTAssertEqual(fixture.auditLogger.records.first?.destination.path, "/tmp/archive_unpacked")
+        XCTAssertEqual(fixture.instance.hudModel.history.first?.path, "/tmp/archive_unpacked")
+        XCTAssertEqual(fixture.instance.hudModel.history.first?.message, UILocalized.formatted("hud.zip.success", "/tmp/archive_unpacked"))
+        XCTAssertEqual(fixture.undoManager.stagedOriginals.count, 1)
+        XCTAssertTrue(fixture.overlay.activeStates.contains(true))
     }
 
     func testZipExtractionFailureClearsDedupAndShowsError() {
-        let settings = AppSettings()
-        let overlay = OverlayStub()
-        let hud = HUDStub()
-        let resolver = ResolverStub(result: FinderItemResolution(path: "/tmp/archive.zip", isDirectory: false, isArchive: true))
-        let zipHandler = ZipHandlerStubFailure(error: ZipHandlerError.dittoFailed(code: 1, message: "ditto failed"))
-        let hotKeys = HotKeyCenterStub()
-        let dedup = DeduplicationStore(ttl: 10, capacity: 8)
-        let auditLogger = AuditLoggerStub()
-        let undoManager = UndoManagerStub()
+        let error = ZipHandlerError.dittoFailed(code: 1, message: "ditto failed")
+        let fixture = makeCoordinator(zipResult: .failure(error))
 
-        let coordinator = AppCoordinator(
-            settings: settings,
-            overlayManager: overlay,
-            pasteboard: .general,
-            dedupStore: dedup,
-            hoverMonitorFactory: { triggerSettings, handler in
-                HoverMonitor(settings: triggerSettings, handler: handler)
-            },
-            hudWindowFactory: { _, _ in hud },
-            resolver: resolver,
-            zipHandler: zipHandler,
-            hotKeyCenter: hotKeys,
-            auditLogger: auditLogger,
-            undoManager: undoManager
-        )
+        fixture.overlay.setActive(true)
+        fixture.overlay.updateCursorPosition(.zero)
+        fixture.instance.manualResolve()
 
-        coordinator.manualResolve()
-
-        wait(for: [overlay.updateExpectation, resolver.expectation, zipHandler.expectation], timeout: 1.0)
-        waitForHUDHistory(of: coordinator)
+        wait(for: fixture.overlay.updateExpectation, fixture.resolver.expectation, fixture.zipExpectation)
+        waitForHUDHistory(of: fixture.instance)
 
         let dedupKey = "/tmp/archive.zip::resolve"
-        XCTAssertFalse(dedup.isDuplicate(dedupKey))
-        XCTAssertTrue(auditLogger.records.isEmpty)
-        XCTAssertEqual(coordinator.hudModel.history.first?.path, "/tmp/archive.zip")
-        XCTAssertEqual(coordinator.hudModel.history.first?.message, UILocalized.formatted("hud.zip.error", "ditto failed"))
+        XCTAssertFalse(fixture.dedup.isDuplicate(dedupKey))
+        XCTAssertTrue(fixture.auditLogger.records.isEmpty)
+        XCTAssertEqual(fixture.instance.hudModel.history.first?.path, "/tmp/archive.zip")
+        XCTAssertEqual(fixture.instance.hudModel.history.first?.message, UILocalized.formatted("hud.zip.error", "ditto failed"))
+        XCTAssertTrue(fixture.compression.compressRequests.isEmpty)
+    }
+
+    func testCompressionSuccessRecordsAuditAndHud() {
+        let compressedURL = URL(fileURLWithPath: "/tmp/folder.zip")
+        let fixture = makeCompressionCoordinator(compressResult: .success(compressedURL))
+
+        let compressionExpectation = expectation(description: "compression invoked")
+        fixture.compression.expectation = compressionExpectation
+
+        fixture.overlay.setActive(true)
+        fixture.overlay.updateCursorPosition(.zero)
+        fixture.instance.manualResolve()
+
+        wait(for: fixture.overlay.updateExpectation, fixture.resolver.expectation, compressionExpectation)
+        waitForHUDHistory(of: fixture.instance)
+
+        XCTAssertEqual(fixture.compression.compressRequests.count, 1)
+        XCTAssertEqual(fixture.compression.compressRequests.first?.item.url.path, "/tmp/folder")
+        XCTAssertEqual(fixture.compression.compressRequests.first?.destinationDirectory.path, "/tmp")
+        XCTAssertEqual(fixture.auditLogger.records.first?.action, .compress)
+        XCTAssertEqual(fixture.auditLogger.records.first?.destination.path, compressedURL.path)
+        XCTAssertEqual(fixture.undoManager.stagedOriginals, [URL(fileURLWithPath: "/tmp/folder")])
+        XCTAssertEqual(fixture.instance.hudModel.history.first?.path, compressedURL.path)
+        XCTAssertEqual(fixture.instance.hudModel.history.first?.message, UILocalized.formatted("hud.compress.success", compressedURL.path))
+    }
+
+    private func wait(for expectations: XCTestExpectation...) {
+        wait(for: expectations, timeout: 1.0)
     }
 
     private func waitForHUDHistory(of coordinator: AppCoordinator) {
@@ -93,16 +80,160 @@ final class AppCoordinatorZipHandlingTests: XCTestCase {
         }
         wait(for: [expectation], timeout: 1.0)
     }
+
+    private func makeCoordinator(zipResult: Result<URL, Error>) -> TestFixture {
+        let settings = AppSettings()
+        let overlay = OverlayStub()
+        let hud = HUDStub()
+        let resolver = ResolverStub(result: FinderItemResolution(path: "/tmp/archive.zip", isDirectory: false, isArchive: true))
+        let zipHandler = ZipHandlerStub(result: zipResult)
+        let hotKeys = HotKeyCenterStub()
+        let dedup = DeduplicationStore(ttl: 10, capacity: 8)
+        let auditLogger = AuditLoggerStub()
+        let undoManager = UndoManagerStub()
+        let cursor = CursorControllerStub()
+        let compression = RecordingCompressionService()
+
+        let coordinator = AppCoordinator(
+            settings: settings,
+            overlayManager: overlay,
+            pasteboard: .general,
+            dedupStore: dedup,
+            hoverMonitorFactory: { triggerSettings, dwellHandler, _, modifier in
+                modifier?(true)
+                return HoverMonitor(settings: triggerSettings, handler: dwellHandler)
+            },
+            hudWindowFactory: { _, _ in hud },
+            resolver: resolver,
+            compressionService: compression,
+            zipHandler: zipHandler,
+            hotKeyCenter: hotKeys,
+            auditLogger: auditLogger,
+            undoManager: undoManager,
+            cursorController: cursor
+        )
+
+        return TestFixture(
+            instance: coordinator,
+            overlay: overlay,
+            resolver: resolver,
+            zipHandler: zipHandler,
+            auditLogger: auditLogger,
+            undoManager: undoManager,
+            dedup: dedup,
+            zipExpectation: zipHandler.expectation,
+            compression: compression
+        )
+    }
+
+    private func makeCompressionCoordinator(compressResult: Result<URL, Error>) -> CompressionFixture {
+        var settings = AppSettings()
+        settings.zip.behaviour = .auto
+        let overlay = OverlayStub()
+        let hud = HUDStub()
+        let resolver = ResolverStub(result: FinderItemResolution(path: "/tmp/folder", isDirectory: true, isArchive: false))
+        let compression = RecordingCompressionService(result: compressResult)
+        let zipHandler = ZipHandlerStub(result: .success(URL(fileURLWithPath: "/tmp/archive_unpacked")))
+        let hotKeys = HotKeyCenterStub()
+        let dedup = DeduplicationStore(ttl: 10, capacity: 8)
+        let auditLogger = AuditLoggerStub()
+        let undoManager = UndoManagerStub()
+        let cursor = CursorControllerStub()
+
+        let coordinator = AppCoordinator(
+            settings: settings,
+            overlayManager: overlay,
+            pasteboard: .general,
+            dedupStore: dedup,
+            hoverMonitorFactory: { triggerSettings, dwellHandler, _, modifier in
+                modifier?(true)
+                return HoverMonitor(settings: triggerSettings, handler: dwellHandler)
+            },
+            hudWindowFactory: { _, _ in hud },
+            resolver: resolver,
+            compressionService: compression,
+            zipHandler: zipHandler,
+            hotKeyCenter: hotKeys,
+            auditLogger: auditLogger,
+            undoManager: undoManager,
+            cursorController: cursor
+        )
+
+        return CompressionFixture(
+            instance: coordinator,
+            overlay: overlay,
+            resolver: resolver,
+            compression: compression,
+            auditLogger: auditLogger,
+            undoManager: undoManager
+        )
+    }
+
+    private struct TestFixture {
+        let instance: AppCoordinator
+        let overlay: OverlayStub
+        let resolver: ResolverStub
+        let zipHandler: ZipHandlerStub
+        let auditLogger: AuditLoggerStub
+        let undoManager: UndoManagerStub
+        let dedup: DeduplicationStore
+        let zipExpectation: XCTestExpectation
+        let compression: RecordingCompressionService
+    }
+
+    private struct CompressionFixture {
+        let instance: AppCoordinator
+        let overlay: OverlayStub
+        let resolver: ResolverStub
+        let compression: RecordingCompressionService
+        let auditLogger: AuditLoggerStub
+        let undoManager: UndoManagerStub
+    }
 }
 
 // MARK: - Test Doubles
 
+private final class RecordingCompressionService: CompressionService, @unchecked Sendable {
+    struct Request: Equatable {
+        let item: FinderItem
+        let destinationDirectory: URL
+    }
+
+    private(set) var compressRequests: [Request] = []
+    var compressResult: Result<URL, Error>
+    var expectation: XCTestExpectation?
+
+    init(result: Result<URL, Error> = .success(URL(fileURLWithPath: "/tmp/compressed.zip"))) {
+        self.compressResult = result
+    }
+
+    func compress(item: FinderItem, destinationDirectory: URL) throws -> URL {
+        compressRequests.append(Request(item: item, destinationDirectory: destinationDirectory))
+        expectation?.fulfill()
+        switch compressResult {
+        case let .success(url):
+            return url
+        case let .failure(error):
+            throw error
+        }
+    }
+
+    func decompress(item: FinderItem, destinationDirectory: URL) throws -> URL {
+        destinationDirectory
+    }
+}
+
 @MainActor
 private final class OverlayStub: OverlayUpdating {
     let updateExpectation = XCTestExpectation(description: "overlay updated")
+    private(set) var activeStates: [Bool] = []
 
     func updateCursorPosition(_ point: CGPoint) {
         updateExpectation.fulfill()
+    }
+
+    func setActive(_ isActive: Bool) {
+        activeStates.append(isActive)
     }
 }
 
@@ -121,6 +252,8 @@ private final class HUDStub: HUDWindowControlling {
     func focus() {
         isVisible = true
     }
+
+    func updatePosition(nearestTo point: CGPoint?) {}
 }
 
 private final class ResolverStub: FinderItemResolving, @unchecked Sendable {
@@ -137,33 +270,24 @@ private final class ResolverStub: FinderItemResolving, @unchecked Sendable {
     }
 }
 
-private final class ZipHandlerStubSuccess: ZipHandling, @unchecked Sendable {
-    let destination: URL
+private final class ZipHandlerStub: ZipHandling, @unchecked Sendable {
+    private let result: Result<URL, Error>
     private(set) var recordedZipPath: String?
     let expectation = XCTestExpectation(description: "zip handler invoked")
 
-    init(destination: URL) {
-        self.destination = destination
+    init(result: Result<URL, Error>) {
+        self.result = result
     }
 
     func extract(zipPath: String) throws -> URL {
         recordedZipPath = zipPath
         expectation.fulfill()
-        return destination
-    }
-}
-
-private final class ZipHandlerStubFailure: ZipHandling, @unchecked Sendable {
-    let error: Error
-    let expectation = XCTestExpectation(description: "zip handler invoked")
-
-    init(error: Error) {
-        self.error = error
-    }
-
-    func extract(zipPath: String) throws -> URL {
-        expectation.fulfill()
-        throw error
+        switch result {
+        case let .success(url):
+            return url
+        case let .failure(error):
+            throw error
+        }
     }
 }
 
@@ -199,4 +323,9 @@ private final class UndoManagerStub: UndoStagingManaging, @unchecked Sendable {
     }
 
     func restore(from stagingURL: URL, to destinationURL: URL) throws {}
+}
+
+private final class CursorControllerStub: CursorVisualControlling {
+    func update(listening: Bool) {}
+    func reset() {}
 }

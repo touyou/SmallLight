@@ -19,12 +19,14 @@ public struct HUDEntry: Identifiable, Equatable, Sendable {
 public final class HUDViewModel: ObservableObject {
     @Published public private(set) var history: [HUDEntry] = []
     @Published public var autoCopyEnabled: Bool
+    @Published public private(set) var accessibilityGranted: Bool
 
     private let historyLimit: Int
 
-    public init(historyLimit: Int, autoCopyEnabled: Bool) {
+    public init(historyLimit: Int, autoCopyEnabled: Bool, accessibilityGranted: Bool = true) {
         self.historyLimit = historyLimit
         self.autoCopyEnabled = autoCopyEnabled
+        self.accessibilityGranted = accessibilityGranted
     }
 
     /// Appends a new entry and trims history to the configured limit.
@@ -33,5 +35,9 @@ public final class HUDViewModel: ObservableObject {
         if history.count > historyLimit {
             history = Array(history.prefix(historyLimit))
         }
+    }
+
+    public func updateAccessibility(granted: Bool) {
+        accessibilityGranted = granted
     }
 }

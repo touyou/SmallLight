@@ -1,6 +1,7 @@
 @testable import SmallLightAppHost
 import AppKit
 import SmallLightDomain
+import SmallLightServices
 import SmallLightUI
 import XCTest
 
@@ -11,36 +12,38 @@ final class AppCoordinatorManualResolveTests: XCTestCase {
         let overlay = OverlayStub()
         let hud = HUDStub()
         let resolver = ResolverStub(result: FinderItemResolution(path: "/tmp/manual.txt", isDirectory: false, isArchive: false))
-        let zip = ZipHandlerStub()
+    let zip = ZipHandlerStub()
+    let compression = StubCompressionService()
         let hotKeys = HotKeyCenterStub()
         let dedup = DeduplicationStore(ttl: 10, capacity: 8)
         let auditLogger = AuditLoggerStub()
         let undoManager = UndoManagerStub()
+        let cursor = CursorControllerStub()
 
         let coordinator = AppCoordinator(
             settings: settings,
             overlayManager: overlay,
             pasteboard: .general,
             dedupStore: dedup,
-            hoverMonitorFactory: { triggerSettings, handler in
-                HoverMonitor(settings: triggerSettings, handler: handler)
+            hoverMonitorFactory: { triggerSettings, dwellHandler, _, _ in
+                HoverMonitor(settings: triggerSettings, handler: dwellHandler)
             },
             hudWindowFactory: { _, _ in hud },
             resolver: resolver,
+            compressionService: compression,
             zipHandler: zip,
             hotKeyCenter: hotKeys,
             auditLogger: auditLogger,
-            undoManager: undoManager
+            undoManager: undoManager,
+            cursorController: cursor
         )
 
-        // Pre-mark the dedup store with the resolution key.
         let key = "/tmp/manual.txt::resolve"
         dedup.record(key)
 
         coordinator.manualResolve()
 
-        wait(for: [overlay.updateExpectation], timeout: 1.0)
-        wait(for: [resolver.expectation], timeout: 1.0)
+        wait(for: [overlay.updateExpectation, resolver.expectation], timeout: 1.0)
         waitForHUDHistory(of: coordinator)
 
         XCTAssertEqual(resolver.callCount, 1, "Manual resolve should invoke resolver even when dedup contains the key")
@@ -65,10 +68,15 @@ final class AppCoordinatorManualResolveTests: XCTestCase {
 private final class OverlayStub: OverlayUpdating {
     let updateExpectation = XCTestExpectation(description: "overlay updated")
     private(set) var receivedUpdate = false
+    private(set) var activeStates: [Bool] = []
 
     func updateCursorPosition(_ point: CGPoint) {
         receivedUpdate = true
         updateExpectation.fulfill()
+    }
+
+    func setActive(_ isActive: Bool) {
+        activeStates.append(isActive)
     }
 }
 
@@ -87,6 +95,8 @@ private final class HUDStub: HUDWindowControlling {
     func focus() {
         isVisible = true
     }
+
+    func updatePosition(nearestTo point: CGPoint?) {}
 }
 
 private final class ResolverStub: FinderItemResolving, @unchecked Sendable {
@@ -123,15 +133,8 @@ private final class ZipHandlerStub: ZipHandling, @unchecked Sendable {
 
 @MainActor
 private final class HotKeyCenterStub: HotKeyRegistering {
-    private(set) var entries: [(HotKeyChord, () -> Void)] = []
-
-    func register(_ entries: [(HotKeyChord, () -> Void)]) throws {
-        self.entries = entries
-    }
-
-    func unregisterAll() {
-        entries.removeAll()
-    }
+    func register(_ entries: [(HotKeyChord, () -> Void)]) throws {}
+    func unregisterAll() {}
 }
 
 private final class AuditLoggerStub: AuditLogging, @unchecked Sendable {
@@ -151,7 +154,17 @@ private final class UndoManagerStub: UndoStagingManaging, @unchecked Sendable {
         URL(fileURLWithPath: "/tmp/staging/original-\(UUID().uuidString)")
     }
 
-    func restore(from stagingURL: URL, to destinationURL: URL) throws {
-        // no-op
+    func restore(from stagingURL: URL, to destinationURL: URL) throws {}
+}
+
+private final class CursorControllerStub: CursorVisualControlling {
+    private(set) var listeningStates: [Bool] = []
+
+    func update(listening: Bool) {
+        listeningStates.append(listening)
+    }
+
+    func reset() {
+        listeningStates.append(false)
     }
 }
