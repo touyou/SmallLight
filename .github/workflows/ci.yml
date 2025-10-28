@@ -30,8 +30,9 @@ jobs:
       - name: Format Check
         run: swift format lint --configuration .swift-format.json --recursive .
 
-      - name: Swift Build
-        run: swift build
+      # Swift 6.3などにするまでビルドテストはコメントアウト
+      # - name: Swift Build
+      #   run: swift build
 
       - name: Swift Test
         run: swift test
