@@ -15,25 +15,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Swift 6.3 snapshot toolchain
-        env:
-          SWIFT_SNAPSHOT: swift-6.3-DEVELOPMENT-SNAPSHOT-2025-10-01-a
-        run: |
-          SNAPSHOT_DIR="swift-6.3-branch/xcode/${SWIFT_SNAPSHOT}"
-          SWIFT_URL="https://download.swift.org/${SNAPSHOT_DIR}/${SWIFT_SNAPSHOT}-osx.pkg"
-          curl -L "$SWIFT_URL" -o swift-toolchain.pkg
-          sudo installer -pkg swift-toolchain.pkg -target /
-          rm swift-toolchain.pkg
-
-      - name: Configure Swift toolchain
-        env:
-          SWIFT_SNAPSHOT: swift-6.3-DEVELOPMENT-SNAPSHOT-2025-10-01-a
-        run: |
-          TOOLCHAIN_ROOT="/Library/Developer/Toolchains/${SWIFT_SNAPSHOT}.xctoolchain"
-          sudo xcode-select -switch /Applications/Xcode.app
-          echo "${TOOLCHAIN_ROOT}/usr/bin" >> "$GITHUB_PATH"
-          echo "TOOLCHAINS=swift" >> "$GITHUB_ENV"
-          swift --version
+      - name: Set up Swift
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: '6.1'
 
       - name: Install SwiftLint
         run: |
