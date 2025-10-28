@@ -1,0 +1,4 @@
+- Ensure `swift test` passes (and run `mise run test` if changes affect UI/system behaviour) before finishing work.
+- Run `mise run lint` to mirror CI lint checks for SwiftLint + swift-format (lint mode adds no modifications).
+- Update relevant docs under `docs/` whenever behaviour or flows change; keep README consistent.
+- Capture follow-up TODOs with owner + reference as per AGENTS guidelines.

@@ -1,0 +1,6 @@
+- `mise run bootstrap` – install SwiftLint/swift-format and build once.
+- `swift build --product SmallLight` – build the resident app host.
+- `swift run SmallLight` – run the app during development.
+- `swift test` – execute package unit/integration tests quickly.
+- `xcodebuild test -scheme SmallLight-Package -destination 'platform=macOS'` – full Xcode-driven tests (also via `mise run test`).
+- `mise run lint` – run `swiftlint --strict` and `swift format lint` as CI does.

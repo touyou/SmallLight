@@ -1,0 +1,4 @@
+- SmallLight is a macOS resident utility that watches the Finder cursor and, when the designated modifier keys are pressed, compresses or decompresses the item under the cursor, logs the action, and presents HUD feedback.
+- The app is built as a Swift Package with multiple modules (App host, domain, services, UI) targeting macOS 13+ using Swift 5.9, SwiftUI for configuration UI, and AppKit/Core Graphics for system integration.
+- Key behaviours include overlay + cursor tracking, Finder item resolution via accessibility APIs, ZIP automation with staging + undo, and audit logging.
+- Documentation lives in `docs/` (implementation plan, operations guide, product spec) and the project follows the guidelines captured in `AGENTS.md` with strong TDD and modularization expectations.

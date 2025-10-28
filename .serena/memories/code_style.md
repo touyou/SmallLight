@@ -1,0 +1,3 @@
+- Swift sources must satisfy `swift format` (configuration in `.swift-format.json`, 4 spaces, 100 char line length, limited blank lines) and `swiftlint --strict` (rules configured in `.swiftlint.yml`).
+- Follow AGENTS.md expectations: small, test-driven changes, meaningful domain naming, arrange/act/assert tests, avoid over-mocking, write documentation updates alongside code.
+- UI uses SwiftUI with AppKit bridges; prefer comments only where logic is non-trivial; abide by module boundaries (AppHost, Domain, Services, UI).
