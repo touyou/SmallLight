@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+remote_name=${1:-}
+remote_url=${2:-}
+
+repo_root=$(git rev-parse --show-toplevel 2>/dev/null || true)
+if [ -z "$repo_root" ]; then
+    echo "pre-push hook: failed to locate repository root" >&2
+    exit 1
+fi
+
+cd "$repo_root"
+
+updates=()
+while IFS= read -r line; do
+    updates+=("$line")
+done
+
+zero_sha="0000000000000000000000000000000000000000"
+empty_tree="4b825dc642cb6eb9a060e54bf8d69288fbee4904"
+
+swift_tmp=$(mktemp)
+trap 'rm -f "$swift_tmp"' EXIT
+
+if [ ${#updates[@]} -eq 0 ]; then
+    git diff --cached --name-only --diff-filter=ACMRTUXB -- '*.swift' 'Package.swift' | sort -u >"$swift_tmp"
+else
+    for update in "${updates[@]}"; do
+        set -- $update
+        local_ref=${1:-}
+        local_sha=${2:-}
+        remote_ref=${3:-}
+        remote_sha=${4:-}
+
+        if [ -z "$local_sha" ] || [ "$local_sha" = "$zero_sha" ]; then
+            continue
+        fi
+
+        base_sha=$remote_sha
+        if [ -z "$base_sha" ] || [ "$base_sha" = "$zero_sha" ]; then
+            base_sha=$empty_tree
+        fi
+
+        git diff --name-only "$base_sha" "$local_sha" -- '*.swift' 'Package.swift' >>"$swift_tmp"
+    done
+    sort -u "$swift_tmp" -o "$swift_tmp"
+fi
+
+swift_files=()
+while IFS= read -r file; do
+    if [ -n "$file" ] && [ -f "$file" ]; then
+        swift_files+=("$file")
+    fi
+done <"$swift_tmp"
+
+if [ ${#swift_files[@]} -eq 0 ]; then
+    echo "[pre-push] No Swift files to format"
+else
+    echo "[pre-push] Running swift-format on ${#swift_files[@]} file(s)"
+    if ! command -v swift >/dev/null 2>&1; then
+        echo "pre-push hook: swift command not found" >&2
+        exit 1
+    fi
+
+    swift format format --configuration .swift-format.json --in-place "${swift_files[@]}"
+
+    if ! git diff --quiet -- "${swift_files[@]}"; then
+        echo "[pre-push] Formatting updated files. Review, add, and commit the changes before pushing." >&2
+        exit 1
+    fi
+fi
+
+if command -v swiftlint >/dev/null 2>&1; then
+    echo "[pre-push] Running swiftlint --strict"
+    swiftlint --strict
+fi
+
+exit 0
