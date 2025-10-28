@@ -10,7 +10,7 @@ final class AppCoordinatorZipHandlingTests: XCTestCase {
     func testZipExtractionSuccessRecordsAuditAndHud() {
         let fixture = makeCoordinator(zipResult: .success(URL(fileURLWithPath: "/tmp/archive_unpacked")))
 
-        fixture.overlay.setActive(true)
+    fixture.overlay.setIndicatorState(.listening)
         fixture.overlay.updateCursorPosition(.zero)
         fixture.instance.manualResolve()
 
@@ -23,14 +23,14 @@ final class AppCoordinatorZipHandlingTests: XCTestCase {
         XCTAssertEqual(fixture.instance.hudModel.history.first?.path, "/tmp/archive_unpacked")
         XCTAssertEqual(fixture.instance.hudModel.history.first?.message, UILocalized.formatted("hud.zip.success", "/tmp/archive_unpacked"))
         XCTAssertEqual(fixture.undoManager.stagedOriginals.count, 1)
-        XCTAssertTrue(fixture.overlay.activeStates.contains(true))
+    XCTAssertTrue(fixture.overlay.recordedStates.contains(.listening))
     }
 
     func testZipExtractionFailureClearsDedupAndShowsError() {
         let error = ZipHandlerError.dittoFailed(code: 1, message: "ditto failed")
         let fixture = makeCoordinator(zipResult: .failure(error))
 
-        fixture.overlay.setActive(true)
+    fixture.overlay.setIndicatorState(.listening)
         fixture.overlay.updateCursorPosition(.zero)
         fixture.instance.manualResolve()
 
@@ -52,7 +52,7 @@ final class AppCoordinatorZipHandlingTests: XCTestCase {
         let compressionExpectation = expectation(description: "compression invoked")
         fixture.compression.expectation = compressionExpectation
 
-        fixture.overlay.setActive(true)
+    fixture.overlay.setIndicatorState(.listening)
         fixture.overlay.updateCursorPosition(.zero)
         fixture.instance.manualResolve()
 
@@ -226,14 +226,18 @@ private final class RecordingCompressionService: CompressionService, @unchecked 
 @MainActor
 private final class OverlayStub: OverlayUpdating {
     let updateExpectation = XCTestExpectation(description: "overlay updated")
-    private(set) var activeStates: [Bool] = []
+    private(set) var recordedStates: [OverlayIndicatorState] = []
 
     func updateCursorPosition(_ point: CGPoint) {
         updateExpectation.fulfill()
     }
 
-    func setActive(_ isActive: Bool) {
-        activeStates.append(isActive)
+    func setIndicatorState(_ state: OverlayIndicatorState) {
+        recordedStates.append(state)
+    }
+
+    func reset() {
+        recordedStates.append(.hidden)
     }
 }
 

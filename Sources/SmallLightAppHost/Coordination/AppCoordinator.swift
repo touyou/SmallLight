@@ -53,7 +53,7 @@ final class AppCoordinator: ObservableObject {
         },
         { [weak self] isHeld in
             guard let self else { return }
-            overlayManager.setActive(isHeld)
+            overlayManager.setIndicatorState(isHeld ? .listening : .idle)
             cursorController.update(listening: isHeld)
         }
     )
@@ -106,7 +106,7 @@ final class AppCoordinator: ObservableObject {
     func start() {
         guard mode == .idle else { return }
         hoverMonitor.start()
-        overlayManager.setActive(false)
+    overlayManager.setIndicatorState(.idle)
         cursorController.update(listening: false)
         hudWindowController.show()
         hudVisible = true
@@ -118,7 +118,7 @@ final class AppCoordinator: ObservableObject {
     func stop() {
         guard mode == .watching else { return }
         hoverMonitor.stop()
-        overlayManager.setActive(false)
+        overlayManager.setIndicatorState(.hidden)
         cursorController.reset()
         hotKeyCenter.unregisterAll()
         mode = .idle

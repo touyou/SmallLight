@@ -95,7 +95,7 @@ final class HoverMonitor {
 
         let isHeld = flags.containsAll(stateMachine.requiredFlags)
         notifyModifierIfNeeded(isHeld: isHeld)
-        if type == .mouseMoved, isHeld {
+        if type == .mouseMoved {
             if let movementHandler {
                 Task { @MainActor in
                     movementHandler(Event(location: location, modifiers: flags))

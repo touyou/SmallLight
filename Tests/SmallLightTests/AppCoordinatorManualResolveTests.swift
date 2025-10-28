@@ -12,8 +12,8 @@ final class AppCoordinatorManualResolveTests: XCTestCase {
         let overlay = OverlayStub()
         let hud = HUDStub()
         let resolver = ResolverStub(result: FinderItemResolution(path: "/tmp/manual.txt", isDirectory: false, isArchive: false))
-    let zip = ZipHandlerStub()
-    let compression = StubCompressionService()
+        let zip = ZipHandlerStub()
+        let compression = StubCompressionService()
         let hotKeys = HotKeyCenterStub()
         let dedup = DeduplicationStore(ttl: 10, capacity: 8)
         let auditLogger = AuditLoggerStub()
@@ -68,15 +68,19 @@ final class AppCoordinatorManualResolveTests: XCTestCase {
 private final class OverlayStub: OverlayUpdating {
     let updateExpectation = XCTestExpectation(description: "overlay updated")
     private(set) var receivedUpdate = false
-    private(set) var activeStates: [Bool] = []
+    private(set) var recordedStates: [OverlayIndicatorState] = []
 
     func updateCursorPosition(_ point: CGPoint) {
         receivedUpdate = true
         updateExpectation.fulfill()
     }
 
-    func setActive(_ isActive: Bool) {
-        activeStates.append(isActive)
+    func setIndicatorState(_ state: OverlayIndicatorState) {
+        recordedStates.append(state)
+    }
+
+    func reset() {
+        recordedStates.append(.hidden)
     }
 }
 
